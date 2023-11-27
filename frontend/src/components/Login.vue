@@ -30,13 +30,15 @@
     </v-container>
   </template>
   
-  <script setup>
+<script setup>
   import { ref } from 'vue';
   import axios from 'axios';
-  
+  import { useRouter } from 'vue-router'; // Import useRouter
+
   const email = ref('');
   const password = ref('');
-  
+  const router = useRouter(); // Use useRouter to get the router instance
+
   const submit = async () => {
     try {
       const response = await axios.post('http://localhost:5000/login', {
@@ -44,17 +46,18 @@
         password: password.value
       });
       console.log('Login successful:', response.data);
-  
+
       // Save the token in local storage or in-memory
       localStorage.setItem('token', response.data.token);
-  
-      // Redirect the user to another page or change the state of your app
-      // this.$router.replace({ path: 'dashboard' });
+
+      // Use router.push to navigate to the profile route
+      router.push('/profile');
     } catch (error) {
       console.error('Login failed:', error.response.data);
     }
   };
-  </script>
+</script>
+
   
   <style>
   /* Add any additional styling you want for your login component here */

@@ -9,13 +9,19 @@ const routes = [
       {
         path: '',
         name: 'Home',
-        // route level code-splitting
-        // this generates a separate chunk (Home-[hash].js) for this route
-        // which is lazy-loaded when the route is visited.
         component: () => import('@/views/Home.vue'),
       },
+      // Add the profile route as a child route
+      {
+        path: 'profile',
+        name: 'Profile',
+        // Make sure to create a Profile.vue file in the '@/views' directory
+        component: () => import('@/views/Profile.vue'),
+      },
+      // ... you can add more child routes here
     ],
   },
+  // ... potentially other routes outside of the default layout
 ]
 
 const router = createRouter({

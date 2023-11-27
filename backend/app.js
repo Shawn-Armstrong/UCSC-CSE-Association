@@ -9,6 +9,38 @@ const SECRET_KEY = 'your_secret_key';
 app.use(cors()); // Enable CORS for all routes
 app.use(express.json()); // Enable body-parser
 
+// Middleware to authenticate the token
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (token == null) return res.sendStatus(401);
+
+  jwt.verify(token, SECRET_KEY, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+};
+
+// Protected route to get user information
+app.get('/profile', authenticateToken, async (req, res) => {
+  try {
+    // req.user contains the JWT payload. In this case, user's ID.
+    const userResult = await pool.query('SELECT id, username, email FROM users WHERE id = $1', [req.user.userId]);
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).send('User not found');
+    }
+
+    // Respond with some user information
+    res.json(userResult.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error retrieving profile');
+  }
+});
+
 app.get('/hello', (req, res) => {
   res.send('Hello World!');
 });
