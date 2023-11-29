@@ -1,38 +1,45 @@
 <template>
-  <v-card class="elevation-12" max-width="500px" style="margin: auto;">
-    <v-toolbar color="primary" dark>
-      <v-toolbar-title>Register</v-toolbar-title>
-      <v-spacer></v-spacer>
-      <v-btn icon @click="$emit('close')">
-        <v-icon>mdi-close</v-icon>
-      </v-btn>
-    </v-toolbar>
-    <v-card-text>
-      <v-text-field
-        label="Username"
-        prepend-icon="mdi-account"
-        type="text"
-        v-model="username"
-      ></v-text-field>
-      <v-text-field
-        label="Email"
-        prepend-icon="mdi-email"
-        type="email"
-        v-model="email"
-      ></v-text-field>
-      <v-text-field
-        label="Password"
-        prepend-icon="mdi-lock"
-        type="password"
-        v-model="password"
-      ></v-text-field>
-    </v-card-text>
-    <v-card-actions>
-      <v-spacer></v-spacer>
-      <v-btn color="secondary" @click="submit">Register</v-btn>
-    </v-card-actions>
-  </v-card>
+  <v-container class="fill-height" fluid>
+    <v-row align="center" justify="center">
+      <v-col cols="12" sm="8" md="4">
+        <v-card class="elevation-12">
+          <v-toolbar color="secondary" dark>
+            <v-toolbar-title>Register</v-toolbar-title>
+            <v-spacer></v-spacer>
+            <v-btn icon @click="$emit('close')">
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </v-toolbar>
+          <v-card-text>
+            <v-text-field
+              label="Username"
+              prepend-icon="mdi-account"
+              type="text"
+              v-model="username"
+            ></v-text-field>
+            <v-text-field
+              label="Email"
+              prepend-icon="mdi-email"
+              type="email"
+              v-model="email"
+            ></v-text-field>
+            <v-text-field
+              label="Password"
+              prepend-icon="mdi-lock"
+              type="password"
+              v-model="password"
+            ></v-text-field>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn color="secondary" @click="submit">Register</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
+
 
 <script setup>
 import { ref } from 'vue';
@@ -58,10 +65,3 @@ const submit = async () => {
   }
 };
 </script>
-
-<style scoped>
-.elevation-12 {
-  /* Styles to ensure the card has space around it within the dialog */
-  margin: auto;
-}
-</style>
