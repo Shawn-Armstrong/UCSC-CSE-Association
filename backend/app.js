@@ -5,9 +5,19 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const port = 5000;
 const SECRET_KEY = 'your_secret_key';
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
 app.use(cors()); // Enable CORS for all routes
 app.use(express.json()); // Enable body-parser
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'timeforfree99@gmail.com',
+    pass: "ktvh dkez sflm cnib", // Use environment variable for security
+  },
+});
 
 // Middleware to authenticate the token
 const authenticateToken = (req, res, next) => {
@@ -95,22 +105,61 @@ app.get('/', (req, res) => res.send('Toto is a yorkie!!!!'));
 app.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
-
-    // Hash the password - the salt is automatically generated and included in the hash
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insert the new user into the database
+    // Generate a verification token
+    const verificationToken = crypto.randomBytes(20).toString('hex');
+
+    // Insert the new user into the database with isVerified set to false
     const result = await pool.query(
-      'INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
-      [username, email, hashedPassword]
+      'INSERT INTO users (username, email, password_hash, verification_token) VALUES ($1, $2, $3, $4) RETURNING id',
+      [username, email, hashedPassword, verificationToken]
     );
 
-    // Respond with the ID of the new user
-    res.status(201).json({ userId: result.rows[0].id });
+    // Send verification email
+    const mailOptions = {
+      from: 'timeforfree99@gmail.com',
+      to: email,
+      subject: 'Please confirm your email account',
+      html: `<p>Please confirm your email by clicking on the following link:</p><p><a href="http://localhost:3000/verify-email?token=${verificationToken}">Verify Email</a></p>`
+    };
+
+    transporter.sendMail(mailOptions, function(error, info) {
+      if (error) {
+        console.log(error);
+        res.status(500).send('Error sending email');
+      } else {
+        console.log('Verification email sent: ' + info.response);
+        res.status(200).json({ message: 'Verification email sent', userId: result.rows[0].id });
+      }
+    });
+
   } catch (err) {
     console.error(err);
-    // Handle errors, such as sending a 400 if the user already exists
     res.status(500).send('Server error');
+  }
+});
+
+// Endpoint to verify user email
+app.get('/verify-email', async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    // Update the user's isVerified to true if the token matches
+    const result = await pool.query(
+      'UPDATE users SET is_verified = true WHERE verification_token = $1 RETURNING *',
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).send('Invalid or expired token');
+    }
+
+    // Redirect or inform the user of successful verification
+    res.send('Email successfully verified!');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error during verification');
   }
 });
 
