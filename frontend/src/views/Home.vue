@@ -1,40 +1,62 @@
 <template>
   <v-container>
-    <v-row justify="center">
-      <v-btn class="mx-12" color="primary" dark v-if="!showLogin && !showRegister" @click="showLoginComponent">Login</v-btn>
-      <v-btn class="mx-12" color="primary" dark v-if="!showLogin && !showRegister" @click="showRegisterComponent">Register</v-btn>
-    </v-row>
+    <v-img
+      contain
+      max-height="100px"
+      max-width="auto"
+      src="../assets/ucsc_logo.png"
+      class="my-10"
+    ></v-img>
 
-    <v-row v-if="showLogin || showRegister">
-      <v-btn class="mx-12" color="primary" dark @click="backToSelection">Back</v-btn>
-    </v-row>
+    <video-background
+      :src="introVideo"
+      style="max-height: 300px; height: 100vh"
+    ></video-background>
 
-    <Login v-if="showLogin" />
-    <Register v-if="showRegister" />
+    <h1 class="text-center my-2" style="color: #003c6c">
+      Computer Science and Engineering Mentoring
+    </h1>
+
+    <v-row class="my-10" justify="center">
+      <v-btn
+        color="#1b77d2"
+        class="text-white mx-10"
+        prepend-icon="mdi-login"
+        elevation="12"
+        raised
+        size="large"
+        @click="navigateToLogin"
+      >
+        Login
+      </v-btn>
+      <v-btn
+        color="#1b77d2"
+        class="text-white mx-10"
+        prepend-icon="mdi-account-plus-outline"
+        elevation="12"
+        raised
+        size="large"
+        @click="navigateToRegister"
+      >
+        Register
+      </v-btn>
+    </v-row>
   </v-container>
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import Login from '@/components/Login.vue';
-import Register from '@/components/Register.vue';
+import { useRouter } from 'vue-router';
+import introVideo from '@/assets/intro.mp4';
+import VideoBackground from 'vue-responsive-video-background-player';
 
-const showLogin = ref(false);
-const showRegister = ref(false);
+const router = useRouter();
 
-const showLoginComponent = () => {
-  showLogin.value = true;
-  showRegister.value = false;
+const navigateToLogin = () => {
+  router.push('/login');
 };
 
-const showRegisterComponent = () => {
-  showLogin.value = false;
-  showRegister.value = true;
-};
-
-const backToSelection = () => {
-  showLogin.value = false;
-  showRegister.value = false;
+const navigateToRegister = () => {
+  router.push('/register');
 };
 </script>
 

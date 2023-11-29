@@ -18,6 +18,21 @@ const routes = [
         // Make sure to create a Profile.vue file in the '@/views' directory
         component: () => import('@/views/Profile.vue'),
       },
+      {
+        path: '/verify-email',
+        name: 'EmailVerification',
+        component: () => import('@/views/EmailVerification.vue'),
+      },
+      {
+        path: '/login',
+        name: 'Login',
+        component: () => import('@/views/Login.vue'),
+      },
+      {
+        path: '/register',
+        name: 'Register',
+        component: () => import('@/views/Register.vue'),
+      },
       // ... you can add more child routes here
     ],
   },
