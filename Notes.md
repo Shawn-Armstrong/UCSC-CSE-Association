@@ -60,3 +60,8 @@
     :27:50.561436+00 | 2023-11-27 08:27:50.561436+00
     (1 row)
     ```
+
+- [ ] Create error field for Login
+- [ ] Create error field for Register
+- [ ] Create logout button
+- [ ] Create login verification needed

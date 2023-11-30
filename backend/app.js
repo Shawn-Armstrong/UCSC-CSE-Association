@@ -81,6 +81,11 @@ app.post('/login', async (req, res) => {
 
     const user = userResult.rows[0];
 
+    // Check if the user's email is verified
+    if (!user.is_verified) {
+      return res.status(403).send('Account verification required');
+    }
+
     // Compare the provided password with the stored hash
     const isMatch = await bcrypt.compare(password, user.password_hash);
 
@@ -99,6 +104,7 @@ app.post('/login', async (req, res) => {
     res.status(500).send('Server error during login');
   }
 });
+
 
 app.get('/', (req, res) => res.send('Toto is a yorkie!!!!'));
 

@@ -7,6 +7,7 @@
             <v-toolbar-title>Login</v-toolbar-title>
           </v-toolbar>
           <v-card-text>
+            <div align="center" v-if="verificationError" class="error-message">{{ verificationError }}</div>
             <v-text-field
               label="Email"
               prepend-icon="mdi-account"
@@ -38,11 +39,11 @@ import { useRouter } from 'vue-router';
 
 const email = ref('');
 const password = ref('');
+const verificationError = ref('');
 const router = useRouter();
 
-// Function to navigate back to the Home view
 const goBack = () => {
-  router.push('/'); // Use the router to navigate to the home route
+  router.push('/');
 };
 
 const submit = async () => {
@@ -56,10 +57,17 @@ const submit = async () => {
     router.push('/profile');
   } catch (error) {
     console.error('Login failed:', error.response.data);
+    // Check for verification error
+    if (error.response && error.response.status === 403) {
+      verificationError.value = error.response.data;
+    }
   }
 };
 </script>
 
-<style>
-/* Add any additional styling you want for your login component here */
+<style scoped>
+.error-message {
+  color: red;
+  margin-bottom: 15px;
+}
 </style>
