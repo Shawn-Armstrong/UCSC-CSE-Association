@@ -1,82 +1,75 @@
-# Three-tier Architecture Demo
+# UCSC CSE Association
 
-### Overview
-- This repository contains a minimal containerized web application with a three-tier architecture consisting of a frontend, backend and database.
-- The frontend uses JavaScript in conjunction with the Vuejs / Vuetify UX framework that supports hot module reloading *(HMR)*
-- The backend uses JavaScript in conjunction with the Nodejs / Expressjs framework that support hot reloading
-- The database is a PostgreSQL instance
+### Overview 
+- This repository contains a containerized N-tier web application
+- This project seeks to be an early prototype for our organizational website
 
-### Frontend Demo with HMR
+### Example
 
-<p align="center">
-  <img src="https://user-images.githubusercontent.com/80125540/285106196-ead02944-7ee8-4812-b028-a2d02ffb6fac.gif" alt="frontend" style="width: 75%; height: auto;" title="Click for full size">
-</p>
+## Getting Started
 
-### Backend Demo with nodemon
-<p align="center">
-  <img src="https://user-images.githubusercontent.com/80125540/285107388-070c840e-ca12-4a08-bf6f-8ee209d310ac.gif" alt="backend" style="width: 75%; height: auto;"  title="Click for full size">
-</p>
-
-### End-to-end Demo
-`<TBC>`
-
-## Quick Start
-
-### Requirements 
+### Requirements
+- Git
 - Docker
 
 ### Instructions
-- Clone this repository
 
+1. Clone the repository 
+     
     ```Console
-    git clone <URL>
+    git clone https://github.com/Shawn-Armstrong/UCSC-CSE-Association.git
     ```
-
-- Launch the multi-container application:
-
-    ```Console
+2. Start the containers:
+   
+    ```
     docker-compose up
     ```
+3. Interact with the containers
+   - Frontend is hosted at http://localhost:3000/
+   - Backend is hosted on http://localhost:5000/
+   - Database is listening on port 5432 with credentials `username=user`, `password=password`
 
-- Interact with the web applications
-    - Frontend is hosted at http://localhost:3000/
-    - Backend ist hosted at http://localhost:5000/
-    - Database is listening on port 5432
+## Technical Details
 
-## Issues
-- **Frontend HMR intermittently fails** after attempting to add AJAX call to backend. I suspect the AJAX call isn't responsible for the failure as I never triggered the event; rather, the HMR went crazy while adding the code. See suspect directory for code. 
-  - When attempting to restart the container Docker give the following notification:
-      
-    ![image](https://user-images.githubusercontent.com/80125540/285111650-9e6b758f-90fa-4790-a6c6-7eba1f8ec764.png)
-  - Stats reported by container while spinning
+### Features
+- [X] Frontend container hot module reloading *(HMR)* support
+- [X] Backend container nodemon support
+- [X] Frontend transitions using animate.css
+- [X] System register account capabilities
+  ### Details
+  - Frontend has a register component implementation rendered in register view
+  - register component contains a forum for parameter collection
+  - register component sends HTTP request message containing parameter payload to backend on submit event
+  - Backend has a register route that'll handle HTTP request messages 
+  - Route extracts registration parameters
+  - Password is salted then hashed
+  - Verification token is generated 
+  - All Parameters are stored in database
+  - Verification email containing token is sent to the end-user
 
-    ![image](https://user-images.githubusercontent.com/80125540/285112239-b3246fa6-f9c0-449a-99f9-13fa71e18d2c.png)
-
-  - Logs, Inspect, Files and Exec cannot be accessed from Docker Desktop GUI for any container
-  - High CPU usage
-
-    ![image](https://user-images.githubusercontent.com/80125540/285112634-25fabb6c-416f-4ff7-85f6-17eb872e5fad.png)
-  - Docker CLI is also unresponsive
-  - Docker notified it failed to remove compose application:
-     ![image](https://user-images.githubusercontent.com/80125540/285114071-093c5891-cb6f-4fe8-b92b-c0d090751bd7.png)
-  - `docker-compose down` is unresponsive
-  - Turning off Docker via tab tray causes a hang once start up stage begins
-
-    ![image](https://user-images.githubusercontent.com/80125540/285115737-8e483979-b08b-43c8-a0a2-6a0ee89db1d4.png)
-  - Task manager indicates many docker background processes 
-
-    ![image](https://user-images.githubusercontent.com/80125540/285117189-7d20aae5-efe7-47e2-b523-49b11c3bc495.png)
-  - After ending tasks and restarting Docker notifies further errors
-    ![image](https://user-images.githubusercontent.com/80125540/285117512-113a299c-e417-4aff-a99b-1234a1813978.png)
-  - HMR is supported with the following changes:
-
-    https://github.com/Shawn-Armstrong/docker-demo-issue/blob/82c606060f2b26716b971f2b47791cc7d5c209fa/frontend/vite.config.js#L47-L52
-  - Both restart and windows shutdown were conducted but Docker continues to hang on start up
-  - Host operating system
-
-    ```Console
-    Windows 11 Home 64-bit, 22H2
-    AMD Ryzen 7, X86-64
-    ```
-    ### Solution
-    It looks like WSL2 crashed. After I restarted WSL then I was able to restart Docker. The application worked at restart. I suspect Vite's polling setting is too resource intensive. 
+- [ ] System verify e-mail capabilities
+  ### Detials
+  - After registration, an email is sent to the end-user containing a hyperlink
+  - Hyperlink redirects to frontend with verification token as a parameter
+  - Frontend implements EmailVerification component rendered in the EmailVerification view
+  - After navigating to EmailVerification, component will extract token
+  - After extraction, EmailVerification component will initiate AJAX call to backend with token payload
+  - Backend will receive request at endpoint `verify-email`
+  - Backend will extract token from request object
+  - Backend will query database for token; if found, it'll update validation field of related user to true
+- [ ] System login capabilities
+  - Frontend implements Login component rendered in Login view
+  - Login component contains a forum for parameter collection
+  - Login component sends HTTP request message containing parameter payload to backend on submit event
+  - Backend receives request message at login endpoint
+  - Backend extracts parameters from request object
+  - Backend queries database with parameters
+  - If parameters exist and validation is true then generate JWT token and send response back to frontend
+  - Frontend will receive response. 
+  - If token then cache token and redirect to profile; otherwise, display error.
+- [ ] System authenticate routes capabilities
+  - Routes stored in router contain meta data tagging them as sensitive
+  - Sensitive routes require a JWT to be cache in browser
+  - If JWT is cache, allow navigation; otherwise, redirect to login. 
+- [ ] Frontend responsive video
+  - Old video has an encoding issue which was resolved
