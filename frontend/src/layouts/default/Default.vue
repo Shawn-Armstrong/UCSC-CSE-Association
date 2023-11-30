@@ -1,12 +1,12 @@
 <template>
   <v-app>
-      <NavBar />
+    <NavBar />
+    <router-view v-slot="{ Component }">
       <transition name="fade" mode="out-in">
-        <router-view v-slot="{ Component }">
-          <component :key="$route.path" :is="Component" />
-        </router-view>
+        <component :key="$route.path" :is="Component" />
       </transition>
-      <FooterBar />
+    </router-view>
+    <FooterBar />
   </v-app>
 </template>
 
