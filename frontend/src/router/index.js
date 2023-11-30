@@ -1,5 +1,8 @@
-// Composables
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router';
+
+function isLoggedIn() {
+  return localStorage.getItem('token') !== null;
+}
 
 const routes = [
   {
@@ -15,11 +18,14 @@ const routes = [
         },
         component: () => import('@/views/Home.vue'),
       },
-      // Add the profile route as a child route
       {
         path: 'profile',
         name: 'Profile',
-        // Make sure to create a Profile.vue file in the '@/views' directory
+        meta: {
+          requiresAuth: true,
+          enterClass: 'animate__animated animate__fadeIn',
+          leaveClass: 'animate__animated animate__fadeOut',
+        },
         component: () => import('@/views/Profile.vue'),
       },
       {
@@ -45,15 +51,26 @@ const routes = [
         },
         component: () => import('@/views/Register.vue'),
       },
-      // ... you can add more child routes here
     ],
   },
-  // ... potentially other routes outside of the default layout
-]
+];
 
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes,
-})
+});
 
-export default router
+router.beforeEach((to, from, next) => {
+  if (to.matched.some(record => record.meta.requiresAuth)) {
+    if (!isLoggedIn()) {
+      // Redirect to the login page if the user is not logged in
+      next({ name: 'Login' });
+    } else {
+      next(); // Proceed if the user is logged in
+    }
+  } else {
+    next(); // Proceed for routes that don't require authentication
+  }
+});
+
+export default router;
