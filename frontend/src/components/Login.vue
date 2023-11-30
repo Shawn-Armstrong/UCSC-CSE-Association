@@ -21,6 +21,7 @@
             ></v-text-field>
           </v-card-text>
           <v-card-actions>
+            <v-btn text color="primary" @click="goBack">Back to Home</v-btn>
             <v-spacer></v-spacer>
             <v-btn color="primary" @click="submit">Login</v-btn>
           </v-card-actions>
@@ -31,29 +32,30 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
-import axios from "axios";
-import { useRouter } from "vue-router"; // Import useRouter
+import { ref } from 'vue';
+import axios from 'axios';
+import { useRouter } from 'vue-router';
 
-const email = ref("");
-const password = ref("");
-const router = useRouter(); // Use useRouter to get the router instance
+const email = ref('');
+const password = ref('');
+const router = useRouter();
+
+// Function to navigate back to the Home view
+const goBack = () => {
+  router.push('/'); // Use the router to navigate to the home route
+};
 
 const submit = async () => {
   try {
-    const response = await axios.post("http://localhost:5000/login", {
+    const response = await axios.post('http://localhost:5000/login', {
       email: email.value,
       password: password.value,
     });
-    console.log("Login successful:", response.data);
-
-    // Save the token in local storage or in-memory
-    localStorage.setItem("token", response.data.token);
-
-    // Use router.push to navigate to the profile route
-    router.push("/profile");
+    console.log('Login successful:', response.data);
+    localStorage.setItem('token', response.data.token);
+    router.push('/profile');
   } catch (error) {
-    console.error("Login failed:", error.response.data);
+    console.error('Login failed:', error.response.data);
   }
 };
 </script>
