@@ -17,7 +17,7 @@
       Computer Science and Engineering Mentoring
     </h1>
 
-    <v-row class="my-10" justify="center">
+    <v-row class="my-5" justify="center">
       <v-btn
         color="#1b77d2"
         class="text-white mx-10"
