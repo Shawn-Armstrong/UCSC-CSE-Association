@@ -46,8 +46,7 @@
   - Verification token is generated 
   - All Parameters are stored in database
   - Verification email containing token is sent to the end-user
-
-- [ ] System verify e-mail capabilities
+- [X] System verify e-mail capabilities
   ### Detials
   - After registration, an email is sent to the end-user containing a hyperlink
   - Hyperlink redirects to frontend with verification token as a parameter
@@ -57,7 +56,8 @@
   - Backend will receive request at endpoint `verify-email`
   - Backend will extract token from request object
   - Backend will query database for token; if found, it'll update validation field of related user to true
-- [ ] System login capabilities
+- [X] System login capabilities
+  ### Details
   - Frontend implements Login component rendered in Login view
   - Login component contains a forum for parameter collection
   - Login component sends HTTP request message containing parameter payload to backend on submit event
@@ -67,9 +67,11 @@
   - If parameters exist and validation is true then generate JWT token and send response back to frontend
   - Frontend will receive response. 
   - If token then cache token and redirect to profile; otherwise, display error.
-- [ ] System authenticate routes capabilities
+- [X] System authenticate routes capabilities
+  ### Details
   - Routes stored in router contain meta data tagging them as sensitive
   - Sensitive routes require a JWT to be cache in browser
   - If JWT is cache, allow navigation; otherwise, redirect to login. 
-- [ ] Frontend responsive video
+- [X] Frontend responsive video
+  ### Details
   - Old video has an encoding issue which was resolved
