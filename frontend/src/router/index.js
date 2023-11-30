@@ -9,6 +9,10 @@ const routes = [
       {
         path: '',
         name: 'Home',
+        meta: {
+          enterClass: 'animate__animated animate__fadeIn',
+          leaveClass: 'animate__animated animate__fadeOut',
+        },
         component: () => import('@/views/Home.vue'),
       },
       // Add the profile route as a child route
@@ -26,11 +30,19 @@ const routes = [
       {
         path: '/login',
         name: 'Login',
+        meta: {
+          enterClass: 'animate__animated animate__fadeInLeft',
+          leaveClass: 'animate__animated animate__fadeOut',
+        },
         component: () => import('@/views/Login.vue'),
       },
       {
         path: '/register',
         name: 'Register',
+        meta: {
+          enterClass: 'animate__animated animate__fadeInRight',
+          leaveClass: 'animate__animated animate__fadeOut',
+        },
         component: () => import('@/views/Register.vue'),
       },
       // ... you can add more child routes here
