@@ -14,6 +14,9 @@
               color="primary"
             ></v-progress-circular>
           </v-card-text>
+          <v-card-actions>
+            <v-btn color="primary" @click="goToHome">Home</v-btn>
+          </v-card-actions>
         </v-card>
       </v-col>
     </v-row>
@@ -23,9 +26,10 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import axios from "axios";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 const route = useRoute();
+const router = useRouter();
 const message = ref("");
 
 onMounted(() => {
@@ -47,4 +51,12 @@ async function verifyEmail(token) {
     message.value = "Verification failed. The link may be expired or invalid.";
   }
 }
+
+const goToHome = () => {
+  router.push('/');
+};
 </script>
+
+<style scoped>
+/* Add any additional scoped styles here */
+</style>
