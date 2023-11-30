@@ -5,10 +5,6 @@
         <v-card class="elevation-12">
           <v-toolbar color="secondary" dark>
             <v-toolbar-title>Register</v-toolbar-title>
-            <v-spacer></v-spacer>
-            <v-btn icon @click="$emit('close')">
-              <v-icon>mdi-close</v-icon>
-            </v-btn>
           </v-toolbar>
           <v-card-text>
             <v-text-field
@@ -31,6 +27,7 @@
             ></v-text-field>
           </v-card-text>
           <v-card-actions>
+            <v-btn text color="primary" @click="goBack">Back to Home</v-btn>
             <v-spacer></v-spacer>
             <v-btn color="secondary" @click="submit">Register</v-btn>
           </v-card-actions>
@@ -40,14 +37,19 @@
   </v-container>
 </template>
 
-
 <script setup>
 import { ref } from 'vue';
 import axios from 'axios';
+import { useRouter } from 'vue-router';
 
 const username = ref('');
 const email = ref('');
 const password = ref('');
+const router = useRouter();
+
+const goBack = () => {
+  router.push('/');
+};
 
 const submit = async () => {
   try {
@@ -57,11 +59,14 @@ const submit = async () => {
       password: password.value
     });
     console.log('Registration successful:', response.data);
-    // You might want to handle what happens after successful registration here
-    // For example, close the dialog or clear the form
+    // Navigate to a different route if necessary, or show a success message
   } catch (error) {
     console.error('Registration failed:', error.response.data);
-    // You might want to handle errors here, such as displaying a message to the user
+    // Handle the registration error (e.g., show an error message)
   }
 };
 </script>
+
+<style scoped>
+/* Scoped styles for Register.vue */
+</style>
