@@ -76,6 +76,12 @@ const submit = async () => {
   message.value = '';
   isSuccessMessage.value = false;
 
+  // Check if email and password are not empty before attempting to log in
+  if (!email.value || !password.value) {
+    message.value = 'Please enter both email and password.';
+    return;
+  }
+
   try {
     const response = await axios.post('http://localhost:5000/login', {
       email: email.value,
@@ -84,13 +90,17 @@ const submit = async () => {
     localStorage.setItem('token', response.data.token);
     router.push('/profile');
   } catch (error) {
-    if (error.response && error.response.status === 403) {
+    // Specific status code check for verification error
+    if (error.response && error.response.status === 403 && error.response.data === 'Account verification required') {
       verificationError.value = error.response.data;
     } else {
-      verificationError.value = 'Login failed. Please try again.';
+      // For all other errors, don't show the verification error message or button
+      message.value = 'Login failed. Please try again.';
+      isSuccessMessage.value = false;
     }
   }
 };
+
 
 const resendVerificationEmail = async () => {
   verificationError.value = '';

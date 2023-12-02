@@ -55,8 +55,8 @@ const routes = [
         path: '/password-reset',
         name: 'PasswordReset',
         meta: {
-          enterClass: 'animate__animated animate__fadeIn',
-          leaveClass: 'animate__animated animate__fadeOut',
+          enterClass: 'animate__animated animate__fadeInDownBig',
+          leaveClass: 'animate__animated animate__fadeOutDownBig',
         },
         component: () => import('@/views/PasswordReset.vue'),
       },
