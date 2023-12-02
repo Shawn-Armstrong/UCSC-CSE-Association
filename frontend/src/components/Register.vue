@@ -29,7 +29,7 @@
           <v-card-actions>
             <v-btn text color="primary" @click="goBack">Back to Home</v-btn>
             <v-spacer></v-spacer>
-            <v-btn color="secondary" @click="submit">Register</v-btn>
+            <v-btn color="#6ca0dc" @click="submit">Register</v-btn>
           </v-card-actions>
         </v-card>
       </v-col>

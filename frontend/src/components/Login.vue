@@ -14,13 +14,18 @@
                 color="green"
                 @click="resendVerificationEmail"
                 size="small"
-                class="mt-2 mb-3"
                 density="compact"
+                class="mt-1 mb-3"
               >
                 Resend Verification Email
               </v-btn>
             </div>
-            <div v-if="message" align="center" class="mb-3">
+            <div
+              v-if="message"
+              align="center"
+              :class="{'text-success': isSuccessMessage, 'text-error': !isSuccessMessage}"
+              class="mb-3 message"
+            >
               {{ message }}
             </div>
             <v-text-field
@@ -48,68 +53,60 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
-import axios from "axios";
-import { useRouter } from "vue-router";
+import { ref } from 'vue';
+import axios from 'axios';
+import { useRouter } from 'vue-router';
 
-const email = ref("");
-const password = ref("");
-const verificationError = ref(""); // This will display the verification error
-const message = ref(""); // This will display the result message after resending email
+const email = ref('');
+const password = ref('');
+const verificationError = ref('');
+const message = ref('');
+const isSuccessMessage = ref(false);
 const router = useRouter();
 
 const goBack = () => {
-  router.push("/");
+  router.push('/');
 };
 
 const submit = async () => {
-  // Clear both the verification error and the message
-  verificationError.value = "";
-  message.value = "";
-
+  verificationError.value = '';
+  message.value = '';
+  isSuccessMessage.value = false;
+  
   try {
-    const response = await axios.post("http://localhost:5000/login", {
+    const response = await axios.post('http://localhost:5000/login', {
       email: email.value,
       password: password.value,
     });
-    localStorage.setItem("token", response.data.token);
-    router.push("/profile");
+    localStorage.setItem('token', response.data.token);
+    router.push('/profile');
   } catch (error) {
     if (error.response && error.response.status === 403) {
       verificationError.value = error.response.data;
     } else {
-      // Use a general error message for all other login errors
-      verificationError.value = "Login failed. Please try again.";
+      verificationError.value = 'Login failed. Please try again.';
     }
   }
 };
 
 const resendVerificationEmail = async () => {
-  // Clear previous messages
-  verificationError.value = "";
-  message.value = "";
-
+  verificationError.value = '';
+  message.value = '';
+  isSuccessMessage.value = false;
+  
   try {
-    const response = await axios.post(
-      "http://localhost:5000/resend-verification",
-      {
-        email: email.value,
-      }
-    );
-    // Handle the possibility that the response may not directly contain a message
-    message.value =
-      response.data.message || "Verification email resent successfully.";
+    const response = await axios.post('http://localhost:5000/resend-verification', {
+      email: email.value,
+    });
+    message.value = response.data.message || "Verification email resent successfully.";
+    isSuccessMessage.value = true;
   } catch (error) {
-    if (error.response) {
-      // Handle response error messages
-      message.value =
-        error.response.data || "Failed to resend verification email.";
-    } else {
-      // Handle network or other axios errors
-      message.value = "An error occurred while sending the request.";
-    }
+    message.value = error.response ? error.response.data : "Error occurred while resending verification email.";
+    isSuccessMessage.value = false;
   }
 };
 </script>
 
-<style scoped></style>
+<style scoped>
+
+</style>

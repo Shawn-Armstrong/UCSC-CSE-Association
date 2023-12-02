@@ -11,7 +11,7 @@
             <v-progress-circular
               v-else
               indeterminate
-              color="primary"
+              color="#6ca0dc"
             ></v-progress-circular>
           </v-card-text>
           <v-card-actions>
