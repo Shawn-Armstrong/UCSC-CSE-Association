@@ -3,10 +3,19 @@ const cors = require('cors');
 const app = express();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const port = 5000;
-const SECRET_KEY = 'your_secret_key';
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const port = 5000;
+const SECRET_KEY = 'your_secret_key';
+
+const { Pool } = require('pg');
+const pool = new Pool({
+  user: 'user',
+  host: 'database',
+  database: 'mydatabase',
+  password: 'password',
+  port: 5432,
+});
 
 app.use(cors()); // Enable CORS for all routes
 app.use(express.json()); // Enable body-parser
@@ -15,7 +24,7 @@ const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: 'timeforfree99@gmail.com',
-    pass: "ktvh dkez sflm cnib", // Use environment variable for security
+    pass: "ktvh dkez sflm cnib", // development only, burner account -- use environment variables in production
   },
 });
 
@@ -43,28 +52,10 @@ app.get('/profile', authenticateToken, async (req, res) => {
       return res.status(404).send('User not found');
     }
 
-    // Respond with some user information
     res.json(userResult.rows[0]);
   } catch (err) {
     console.error(err);
     res.status(500).send('Server error retrieving profile');
-  }
-});
-
-app.get('/hello', (req, res) => {
-  res.send('Hello World!');
-});
-
-app.post('/login2', (req, res) => {
-  // This is a simplistic example. You should validate the credentials and handle errors properly.
-  // A real implementation should use password hashing and a more secure means of validation.
-
-  const { email, password } = req.body;
-
-  if (email === 'user@example.com' && password === 'password123') {
-    res.json({ token: 'your_generated_token' });
-  } else {
-    res.status(401).send('Invalid credentials');
   }
 });
 
@@ -81,7 +72,6 @@ app.post('/login', async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // Check if the user's email is verified
     if (!user.is_verified) {
       return res.status(403).send('Account verification required');
     }
@@ -93,20 +83,16 @@ app.post('/login', async (req, res) => {
       return res.status(401).send('Invalid credentials');
     }
 
-    // Create a token (for JWT, use jwt.sign)
+    // Create a token
     const token = jwt.sign({ userId: user.id }, SECRET_KEY, { expiresIn: '1h' });
 
     // Send the token to the client
     res.json({ token });
-
   } catch (err) {
     console.error(err);
     res.status(500).send('Server error during login');
   }
 });
-
-
-app.get('/', (req, res) => res.send('Toto is a yorkie!!!!'));
 
 app.post('/register', async (req, res) => {
   try {
@@ -139,14 +125,12 @@ app.post('/register', async (req, res) => {
         res.status(200).json({ message: 'Verification email sent', userId: result.rows[0].id });
       }
     });
-
   } catch (err) {
     console.error(err);
     res.status(500).send('Server error');
   }
 });
 
-// Endpoint to verify user email
 app.get('/verify-email', async (req, res) => {
   try {
     const { token } = req.query;
@@ -161,7 +145,6 @@ app.get('/verify-email', async (req, res) => {
       return res.status(400).send('Invalid or expired token');
     }
 
-    // Redirect or inform the user of successful verification
     res.send('Email successfully verified!');
   } catch (err) {
     console.error(err);
@@ -169,23 +152,72 @@ app.get('/verify-email', async (req, res) => {
   }
 });
 
-app.listen(port, () => console.log(`Backend server listening on port ${port}!`));
-
-const { Pool } = require('pg');
-const pool = new Pool({
-  user: 'user',
-  host: 'database',
-  database: 'mydatabase',
-  password: 'password',
-  port: 5432,
-});
-
 app.get('/data', async (req, res) => {
-    try {
-      const result = await pool.query('SELECT * FROM my_table');
-      res.json(result.rows);
-    } catch (err) {
-      console.error(err);
-      res.status(500).send('Server Error');
-    }
+  try {
+    const result = await pool.query('SELECT * FROM my_table');
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server Error');
+  }
 });
+
+app.post('/resend-verification', async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).send('User not found');
+    }
+
+    const user = userResult.rows[0];
+
+    if (user.is_verified) {
+      return res.status(400).send('Account already verified');
+    }
+
+    // Check if the last attempt was more than an hour ago
+    const oneHourAgo = new Date(Date.now() - 3600000); // 3600000 milliseconds = 1 hour
+    if (user.last_verification_attempt && user.last_verification_attempt < oneHourAgo) {
+      // Reset the count if the last attempt was over an hour ago
+      await pool.query('UPDATE users SET verification_attempts = 0 WHERE id = $1', [user.id]);
+      user.verification_attempts = 0;
+    }
+
+    // Check if the attempt limit has been reached
+    if (user.verification_attempts >= 3) {
+      // If the user already tried 3 times within the last hour, don't allow another attempt
+      return res.status(429).send('Verification email resend limit reached. Please try again later.');
+    }
+
+    // Increment the verification attempt count and update the last attempt timestamp
+    await pool.query('UPDATE users SET verification_attempts = verification_attempts + 1, last_verification_attempt = NOW() WHERE id = $1', [user.id]);
+
+    // Proceed to send the email
+    const mailOptions = {
+      from: 'your-email@example.com',
+      to: email,
+      subject: 'Please confirm your email account',
+      html: `<p>Please confirm your email by clicking on the following link:</p><a href="http://localhost:3000/verify-email?token=${user.verification_token}">Verify Email</a></p>`
+    };
+
+    transporter.sendMail(mailOptions, function(error, info) {
+      if (error) {
+        console.log(error);
+        return res.status(500).send('Error sending email');
+      } else {
+        console.log('Verification email resent: ' + info.response);
+        return res.status(200).send('Verification email resent');
+      }
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
+});
+
+
+app.listen(port, () => console.log(`Backend server listening on port ${port}!`));
