@@ -80,8 +80,14 @@ const submit = async () => {
       email: email.value,
       password: password.value
     });
-    // If registration is successful, redirect to login page
-    router.push('/login');
+    message.value = "Registration successful. Redirecting to login...";
+    isSuccessMessage.value = true;
+    
+    // Wait for 3 seconds before redirecting
+    setTimeout(() => {
+      router.push('/login');
+    }, 1500);
+    
   } catch (error) {
     if (error.response) {
       // Extracting the message from the response
@@ -92,6 +98,7 @@ const submit = async () => {
     isSuccessMessage.value = false;
   }
 };
+
 
 // Compute the class for message based on success or failure
 const messageClass = computed(() => {
