@@ -97,13 +97,24 @@ app.post('/login', async (req, res) => {
 app.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Generate a verification token
+    // Check if the email is already registered
+    const emailCheckResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (emailCheckResult.rows.length > 0) {
+      return res.status(409).json({ message: 'Email is already registered' });
+    }
+
+    // Check if the username is already taken
+    const usernameCheckResult = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    if (usernameCheckResult.rows.length > 0) {
+      return res.status(409).json({ message: 'Username is already taken' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = crypto.randomBytes(20).toString('hex');
 
-    // Insert the new user into the database with isVerified set to false
-    const result = await pool.query(
+    // Insert the new user into the database
+    const insertResult = await pool.query(
       'INSERT INTO users (username, email, password_hash, verification_token) VALUES ($1, $2, $3, $4) RETURNING id',
       [username, email, hashedPassword, verificationToken]
     );
@@ -113,21 +124,21 @@ app.post('/register', async (req, res) => {
       from: 'timeforfree99@gmail.com',
       to: email,
       subject: 'Please confirm your email account',
-      html: `<p>Please confirm your email by clicking on the following link:</p><p><a href="http://localhost:3000/verify-email?token=${verificationToken}">Verify Email</a></p>`
+      html: `<p>Please confirm your email by clicking on the following link:</p><a href="http://localhost:3000/verify-email?token=${verificationToken}">Verify Email</a></p>`
     };
 
     transporter.sendMail(mailOptions, function(error, info) {
       if (error) {
-        console.log(error);
-        res.status(500).send('Error sending email');
+        console.error(error);
+        return res.status(500).json({ message: 'Error sending email' });
       } else {
         console.log('Verification email sent: ' + info.response);
-        res.status(200).json({ message: 'Verification email sent', userId: result.rows[0].id });
+        return res.status(201).json({ message: 'Registration successful. Verification email sent.', userId: insertResult.rows[0].id });
       }
     });
   } catch (err) {
     console.error(err);
-    res.status(500).send('Server error');
+    return res.status(500).json({ message: 'Server error during registration' });
   }
 });
 
