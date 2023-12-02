@@ -51,6 +51,24 @@ const routes = [
         },
         component: () => import('@/views/Register.vue'),
       },
+      {
+        path: '/password-reset',
+        name: 'PasswordReset',
+        meta: {
+          enterClass: 'animate__animated animate__fadeIn',
+          leaveClass: 'animate__animated animate__fadeOut',
+        },
+        component: () => import('@/views/PasswordReset.vue'),
+      },
+      {
+        path: '/password-reset-form',
+        name: 'PasswordResetForm',
+        meta: {
+          enterClass: 'animate__animated animate__fadeIn',
+          leaveClass: 'animate__animated animate__fadeOut',
+        },
+        component: () => import('@/views/PasswordResetForm.vue'),
+      },
     ],
   },
 ];

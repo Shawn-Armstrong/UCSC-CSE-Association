@@ -230,5 +230,80 @@ app.post('/resend-verification', async (req, res) => {
   }
 });
 
+app.post('/reset-password', async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    
+    // Always respond the same way to avoid revealing user information
+    const genericResponse = { message: "If an account with that email exists, a password reset link has been sent." };
+
+    if (userResult.rows.length === 0) {
+      return res.status(200).json(genericResponse);
+    }
+
+    const user = userResult.rows[0];
+    const passwordResetToken = crypto.randomBytes(20).toString('hex');
+    const expirationTime = new Date(Date.now() + 3600000); // Token expires in one hour
+
+    // Store the token and expiration time in the user's record
+    await pool.query(
+      'UPDATE users SET password_reset_token = $1, password_reset_expires = $2 WHERE id = $3',
+      [passwordResetToken, expirationTime, user.id]
+    );
+
+    // Prepare the password reset link for the email
+    const resetLink = `http://localhost:3000/password-reset-form?token=${passwordResetToken}`; // This should point to your front-end route
+
+    // Send reset password email
+    const mailOptions = {
+      from: 'timeforfree99@gmail.com',
+      to: email,
+      subject: 'Reset Your Password',
+      html: `
+        <p>You requested a password reset. Click the link below to reset your password. This link will expire in 1 hour.</p>
+        <a href="${resetLink}">Reset Password</a>
+      `
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Error sending reset password email' });
+      } else {
+        console.log('Password reset email sent:', info.response);
+        return res.status(200).json(genericResponse);
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Server error during password reset' });
+  }
+});
+
+app.post('/reset-password/confirm', async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  try {
+    // Find user with the token and check if the token has expired
+    const userResult = await pool.query('SELECT * FROM users WHERE password_reset_token = $1 AND password_reset_expires > NOW()', [token]);
+
+    if (userResult.rows.length === 0) {
+      return res.status(400).json({ message: "Password reset token is invalid or has expired." });
+    }
+
+    const user = userResult.rows[0];
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update the user's password and clear the reset token and expiration
+    await pool.query('UPDATE users SET password_hash = $1, password_reset_token = NULL, password_reset_expires = NULL WHERE id = $2', [hashedPassword, user.id]);
+
+    res.status(200).json({ message: "Your password has been reset successfully." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error during password reset confirmation." });
+  }
+});
 
 app.listen(port, () => console.log(`Backend server listening on port ${port}!`));

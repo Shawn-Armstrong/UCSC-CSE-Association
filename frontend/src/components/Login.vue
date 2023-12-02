@@ -40,6 +40,9 @@
               type="password"
               v-model="password"
             ></v-text-field>
+            <div v-if="email && email.length > 0" class="text-right">
+              <v-btn text density="compact" size="small" color="primary" @click="resetPassword">Forgot Password?</v-btn>
+            </div>
           </v-card-text>
           <v-card-actions>
             <v-btn text color="primary" @click="goBack">Back to Home</v-btn>
@@ -72,7 +75,7 @@ const submit = async () => {
   verificationError.value = '';
   message.value = '';
   isSuccessMessage.value = false;
-  
+
   try {
     const response = await axios.post('http://localhost:5000/login', {
       email: email.value,
@@ -93,7 +96,7 @@ const resendVerificationEmail = async () => {
   verificationError.value = '';
   message.value = '';
   isSuccessMessage.value = false;
-  
+
   try {
     const response = await axios.post('http://localhost:5000/resend-verification', {
       email: email.value,
@@ -105,8 +108,24 @@ const resendVerificationEmail = async () => {
     isSuccessMessage.value = false;
   }
 };
+
+const resetPassword = () => {
+  router.push('/password-reset'); // Make sure this route matches your actual route for resetting password
+};
 </script>
 
 <style scoped>
-
+.error-message {
+  color: red;
+  text-align: center;
+}
+.text-right {
+  text-align: right;
+}
+.text-success {
+  color: green;
+}
+.text-error {
+  color: red;
+}
 </style>
