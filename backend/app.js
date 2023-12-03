@@ -1,11 +1,11 @@
 const express = require('express');
 const cors = require('cors');
-const app = express();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-const port = 5000;
+const app = express();
+const port = process.env.PORT || 5000; 
 const SECRET_KEY = 'your_secret_key';
 
 const { Pool } = require('pg');
@@ -17,14 +17,14 @@ const pool = new Pool({
   port: 5432,
 });
 
-app.use(cors()); // Enable CORS for all routes
-app.use(express.json()); // Enable body-parser
+app.use(cors());
+app.use(express.json());
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: 'timeforfree99@gmail.com',
-    pass: "ktvh dkez sflm cnib", // development only, burner account -- use environment variables in production
+    pass: "ktvh dkez sflm cnib",
   },
 });
 
@@ -65,7 +65,7 @@ app.post('/login', async (req, res) => {
   try {
     // Check if the user exists in the database
     const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    
+
     if (userResult.rows.length === 0) {
       return res.status(401).send('User does not exist');
     }
@@ -98,16 +98,22 @@ app.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    // Check if the email is already registered
-    const emailCheckResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    if (emailCheckResult.rows.length > 0) {
-      return res.status(409).json({ message: 'Email is already registered' });
+    // Check if the email or username is already registered with a single query
+    const checkResult = await pool.query(
+      'SELECT email, username FROM users WHERE email = $1 OR username = $2',
+      [email, username]
+    );
+
+    // Determine which field (if any) caused the conflict
+    let message = '';
+    if (checkResult.rows.some(row => row.email === email)) {
+      message = 'Email is already registered';
+    } else if (checkResult.rows.some(row => row.username === username)) {
+      message = 'Username is already taken';
     }
 
-    // Check if the username is already taken
-    const usernameCheckResult = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-    if (usernameCheckResult.rows.length > 0) {
-      return res.status(409).json({ message: 'Username is already taken' });
+    if (message) {
+      return res.status(409).json({ message });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -127,7 +133,7 @@ app.post('/register', async (req, res) => {
       html: `<p>Please confirm your email by clicking on the following link:</p><a href="http://localhost:3000/verify-email?token=${verificationToken}">Verify Email</a></p>`
     };
 
-    transporter.sendMail(mailOptions, function(error, info) {
+    transporter.sendMail(mailOptions, function (error, info) {
       if (error) {
         console.error(error);
         return res.status(500).json({ message: 'Error sending email' });
@@ -214,7 +220,7 @@ app.post('/resend-verification', async (req, res) => {
       html: `<p>Please confirm your email by clicking on the following link:</p><a href="http://localhost:3000/verify-email?token=${user.verification_token}">Verify Email</a></p>`
     };
 
-    transporter.sendMail(mailOptions, function(error, info) {
+    transporter.sendMail(mailOptions, function (error, info) {
       if (error) {
         console.log(error);
         return res.status(500).send('Error sending email');
@@ -235,7 +241,7 @@ app.post('/reset-password', async (req, res) => {
 
   try {
     const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    
+
     // Always respond the same way to avoid revealing user information
     const genericResponse = { message: "If an account with that email exists, a password reset link has been sent." };
 
@@ -306,4 +312,10 @@ app.post('/reset-password/confirm', async (req, res) => {
   }
 });
 
-app.listen(port, () => console.log(`Backend server listening on port ${port}!`));
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(port, () => {
+    console.log(`Backend server listening on port ${port}!`);
+  });
+}
+
+module.exports = app; 
