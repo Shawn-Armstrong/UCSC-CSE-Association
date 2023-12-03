@@ -15,6 +15,7 @@
               prepend-icon="mdi-lock"
               type="password"
               v-model="newPassword"
+              class="mt-3"
             ></v-text-field>
             <v-text-field
               label="Confirm New Password"

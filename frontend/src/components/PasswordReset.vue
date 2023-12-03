@@ -15,6 +15,7 @@
                 prepend-icon="mdi-email"
                 type="email"
                 v-model="email"
+                class="mt-3"
               ></v-text-field>
             </v-card-text>
             <v-card-actions>
