@@ -122,6 +122,19 @@ describe('/verify-email route', () => {
     expect(response.statusCode).toBe(200);
     expect(response.text).toBe('Email successfully verified!');
   });
+
+  it('should return 500 if a server error occurs during email verification', async () => {
+    // Mock the database query to throw an error
+    pool.query.mockRejectedValue(new Error('Database error'));
+
+    const response = await request(app)
+      .get('/verify-email')
+      .query({ token: 'someverificationtoken' });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.text).toBe('Server error during verification');
+  });
+
 });
 
 describe('/register route', () => {
@@ -246,6 +259,76 @@ describe('/reset-password/confirm route', () => {
     expect(response.statusCode).toBe(200);
     expect(response.body.message).toBe("Your password has been reset successfully.");
   });
+
+  it('should respond with a generic message even if the user does not exist', async () => {
+    // Mock the database query to return no user
+    pool.query.mockResolvedValueOnce({ rows: [] });
+  
+    const response = await request(app)
+      .post('/reset-password')
+      .send({ email: 'nonexistent@example.com' });
+  
+    expect(response.statusCode).toBe(200);
+    expect(response.body.message).toBe("If an account with that email exists, a password reset link has been sent.");
+  });
+
+  it('should return 500 if a server error occurs during password reset', async () => {
+    // Mock the database query to throw an error
+    pool.query.mockRejectedValue(new Error('Database error'));
+  
+    const response = await request(app)
+      .post('/reset-password')
+      .send({ email: 'user@example.com' });
+  
+    expect(response.statusCode).toBe(500);
+    expect(response.body.message).toBe('Server error during password reset');
+  });  
+
+  it('should send a password reset email if the user exists', async () => {
+    // Mock the database query to return a user
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1, email: 'existinguser@example.com' }] });
+  
+    // Mock the email sending to be successful
+    jest.spyOn(transporter, 'sendMail').mockImplementation((mailOptions, callback) => {
+      callback(null, { response: '250 OK' });
+    });
+  
+    const response = await request(app)
+      .post('/reset-password')
+      .send({ email: 'existinguser@example.com' });
+  
+    expect(response.statusCode).toBe(200);
+    expect(response.body.message).toBe("If an account with that email exists, a password reset link has been sent.");
+  });
+
+  it('should return 500 if there is an error sending the reset password email', async () => {
+    // Mock the database query to return a user
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1, email: 'user@example.com' }] });
+  
+    // Mock the email sending to fail
+    jest.spyOn(transporter, 'sendMail').mockImplementation((mailOptions, callback) => {
+      callback(new Error('Email sending error'), null);
+    });
+  
+    const response = await request(app)
+      .post('/reset-password')
+      .send({ email: 'user@example.com' });
+  
+    expect(response.statusCode).toBe(500);
+    expect(response.body.message).toBe('Error sending reset password email');
+  });
+  
+  it('should return 500 if a server error occurs during password reset confirmation', async () => {
+    // Mock the database query to throw an error
+    pool.query.mockRejectedValue(new Error('Database error'));
+
+    const response = await request(app)
+      .post('/reset-password/confirm')
+      .send({ token: 'validtoken', newPassword: 'newPassword123' });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.body).toEqual({ message: "Server error during password reset confirmation." });
+  });
 });
 
 describe('/resend-verification route', () => {
@@ -323,6 +406,43 @@ describe('/resend-verification route', () => {
 
     expect(response.statusCode).toBe(500);
     expect(response.text).toBe('Server error');
+  });
+
+  it('should reset verification attempts if the last attempt was more than an hour ago', async () => {
+    // Simulate a user whose last verification attempt was more than an hour ago
+    const pastDate = new Date(Date.now() - 2 * 3600000); // 2 hours ago
+    const user = {
+      id: 1,
+      email: 'user@example.com',
+      is_verified: false,
+      verification_attempts: 2,
+      last_verification_attempt: pastDate
+    };
+
+    // Mock the first query to return this user
+    pool.query.mockResolvedValueOnce({ rows: [user] });
+
+    // Mock the second query for resetting the verification attempts
+    pool.query.mockResolvedValueOnce({ rows: [] });
+
+    // Simulate sending the verification email successfully
+    jest.spyOn(transporter, 'sendMail').mockImplementation((mailOptions, callback) => {
+      callback(null, { response: '250 OK' });
+    });
+
+    const response = await request(app)
+      .post('/resend-verification')
+      .send({ email: 'user@example.com' });
+
+    // Check the response status and message
+    expect(response.statusCode).toBe(200);
+    expect(response.text).toBe('Verification email resent');
+
+    // Verify that the query to reset the verification attempts was called with the correct user ID
+    expect(pool.query).toHaveBeenCalledWith(
+      'UPDATE users SET verification_attempts = 0 WHERE id = $1',
+      [user.id]
+    );
   });
 });
 
