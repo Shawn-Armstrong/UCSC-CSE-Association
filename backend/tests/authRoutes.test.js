@@ -67,6 +67,23 @@ describe('/login route', () => {
     expect(response.body).toHaveProperty('token');
     expect(jwt.sign).toHaveBeenCalledTimes(1);
   });
+
+  it('should return 401 for invalid credentials', async () => {
+    // Mock the database query to return a user
+    pool.query.mockResolvedValueOnce({
+      rows: [{ id: 1, email: 'user@example.com', password_hash: 'hashedpassword', is_verified: true }]
+    });
+
+    // Mock bcrypt.compare to simulate password mismatch
+    bcrypt.compare.mockResolvedValue(false);
+
+    const response = await request(app)
+      .post('/login')
+      .send({ email: 'user@example.com', password: 'wrongpassword' });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.text).toBe('Invalid credentials');
+  });
 });
 
 describe('/verify-email route', () => {
@@ -107,13 +124,22 @@ describe('/verify-email route', () => {
 
 describe('/register route', () => {
   let pool;
+  let sendMailMock;
 
   beforeAll(() => {
     pool = new Pool();
+    // Mock bcrypt for password hashing
+    bcrypt.hash.mockResolvedValue('hashedpassword');
+  });
+
+  beforeEach(() => {
+    // Mock transporter.sendMail to simulate email sending
+    sendMailMock = jest.spyOn(transporter, 'sendMail');
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    sendMailMock.mockRestore();
   });
 
   it('should return 409 if email is already registered', async () => {
@@ -152,6 +178,25 @@ describe('/register route', () => {
     expect(response.statusCode).toBe(201);
     expect(response.body.message).toContain('Registration successful');
   });
+
+  it('should return 500 if email sending fails', async () => {
+    // Mock the database query to simulate successful user registration
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1 }] });
+
+    // Simulate email sending failure
+    sendMailMock.mockImplementation((mailOptions, callback) => {
+      callback(new Error('Email sending error'), null);
+    });
+
+    const response = await request(app)
+      .post('/register')
+      .send({ username: 'newuser', email: 'user@example.com', password: 'password123' });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.body).toEqual({ message: 'Error sending email' });
+  });
+
+  
 });
 
 describe('/reset-password/confirm route', () => {
@@ -252,3 +297,105 @@ describe('/resend-verification route', () => {
     expect(sendMailStub.calledOnce).toBeTruthy()
   });
 });
+
+describe('authenticateToken middleware', () => {
+  let pool;
+
+  beforeAll(() => {
+    pool = new Pool();
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should return 401 if no token is provided', async () => {
+    const response = await request(app)
+      .get('/profile'); // Assuming /profile uses authenticateToken middleware
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it('should return 403 if token is invalid', async () => {
+    jwt.verify.mockImplementation((token, secret, callback) => {
+      callback(new Error('Invalid token'), null);
+    });
+
+    const response = await request(app)
+      .get('/profile')
+      .set('Authorization', 'Bearer invalid.token');
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it('should allow access with a valid token', async () => {
+    // Mock jwt.verify for a valid token scenario
+    jwt.verify.mockImplementation((token, secret, callback) => {
+      // Simulate a valid token with a user object
+      callback(null, { userId: 1 });
+    });
+
+    // Mock database response for the profile route
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1, username: 'testuser', email: 'test@example.com' }] });
+
+    const response = await request(app)
+      .get('/profile') // Replace with your actual protected route
+      .set('Authorization', 'Bearer valid.token');
+
+    expect(response.statusCode).toBe(200);
+    // Further assertions based on the expected response
+  });
+});
+
+describe('/profile route', () => {
+  let pool;
+
+  beforeAll(() => {
+    pool = new Pool();
+    // Mock jwt.verify to always return a valid userId
+    jwt.verify.mockImplementation((token, secret, callback) => {
+      callback(null, { userId: 1 });
+    });
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should return 404 if user is not found', async () => {
+    // Mock the database query to return an empty array
+    pool.query.mockResolvedValueOnce({ rows: [] });
+
+    const response = await request(app)
+      .get('/profile')
+      .set('Authorization', 'Bearer valid.token');
+
+    expect(response.statusCode).toBe(404);
+    expect(response.text).toBe('User not found');
+  });
+
+  it('should return 500 on server error', async () => {
+    // Mock the database query to reject with an error
+    pool.query.mockRejectedValue(new Error('Server error'));
+
+    const response = await request(app)
+      .get('/profile')
+      .set('Authorization', 'Bearer valid.token');
+
+    expect(response.statusCode).toBe(500);
+    expect(response.text).toBe('Server error retrieving profile');
+  });
+
+  it('should return 500 on server error', async () => {
+    // Mock the database query to throw an error
+    pool.query.mockRejectedValue(new Error('Database error'));
+
+    const response = await request(app)
+      .post('/login')
+      .send({ email: 'user@example.com', password: 'password123' });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.text).toBe('Server error during login');
+  });
+});
+
