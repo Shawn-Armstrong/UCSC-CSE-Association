@@ -27,6 +27,7 @@ describe('/login route', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    pool.query.mockReset();
   });
 
   it('should return 401 if user does not exist', async () => {
@@ -95,6 +96,7 @@ describe('/verify-email route', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    pool.query.mockReset();
   });
 
   it('should return 400 if token is invalid or expired', async () => {
@@ -139,6 +141,7 @@ describe('/register route', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    pool.query.mockReset();
     sendMailMock.mockRestore();
   });
 
@@ -195,8 +198,18 @@ describe('/register route', () => {
     expect(response.statusCode).toBe(500);
     expect(response.body).toEqual({ message: 'Error sending email' });
   });
-
   
+  it('should return 500 if a server error occurs during registration', async () => {
+    // Mock the database query to throw an error
+    pool.query.mockRejectedValue(new Error('Database error'));
+
+    const response = await request(app)
+      .post('/register')
+      .send({ username: 'newuser', email: 'user@example.com', password: 'password123' });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.body).toEqual({ message: 'Server error during registration' });
+  });
 });
 
 describe('/reset-password/confirm route', () => {
@@ -208,6 +221,7 @@ describe('/reset-password/confirm route', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    pool.query.mockReset();
   });
 
   it('should return 400 if password reset token is invalid or has expired', async () => {
@@ -245,10 +259,12 @@ describe('/resend-verification route', () => {
       .callsFake((mailOptions, callback) => {
         callback(null, { response: "250 OK" });
       });
+    sendMailMock2 = jest.spyOn(transporter, 'sendMail');
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    pool.query.mockReset();
     sendMailStub.restore();
   });
 
@@ -296,6 +312,18 @@ describe('/resend-verification route', () => {
     expect(response.text).toBe('Verification email resent');
     expect(sendMailStub.calledOnce).toBeTruthy()
   });
+
+  it('should return 500 on server error', async () => {
+    // Mock the database query to throw an error
+    pool.query.mockRejectedValue(new Error('Database error'));
+
+    const response = await request(app)
+      .post('/resend-verification')
+      .send({ email: 'user@example.com' });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.text).toBe('Server error');
+  });
 });
 
 describe('authenticateToken middleware', () => {
@@ -307,6 +335,7 @@ describe('authenticateToken middleware', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    pool.query.mockReset();
   });
 
   it('should return 401 if no token is provided', async () => {
@@ -360,6 +389,7 @@ describe('/profile route', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    pool.query.mockReset();
   });
 
   it('should return 404 if user is not found', async () => {
@@ -398,4 +428,3 @@ describe('/profile route', () => {
     expect(response.text).toBe('Server error during login');
   });
 });
-
