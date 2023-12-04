@@ -4,14 +4,12 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const app = require('../app');
+const sinon = require("sinon");
+const transporter = require('../services/emailService');
 
 jest.mock('bcrypt');
 jest.mock('jsonwebtoken');
-jest.mock('nodemailer', () => ({
-  createTransport: jest.fn().mockReturnValue({
-    sendMail: jest.fn().mockResolvedValue({ response: '250 Message accepted' }),
-  }),
-}));
+
 jest.mock('pg', () => {
   const mPool = {
     query: jest.fn(),
@@ -193,13 +191,20 @@ describe('/reset-password/confirm route', () => {
 
 describe('/resend-verification route', () => {
   let pool;
+  let sendMailStub;
 
-  beforeAll(() => {
+  beforeEach(() => {
     pool = new Pool();
+    sendMailStub = sinon
+      .stub(transporter, "sendMail")
+      .callsFake((mailOptions, callback) => {
+        callback(null, { response: "250 OK" });
+      });
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    sendMailStub.restore();
   });
 
   it('should return 404 if user not found', async () => {
@@ -238,15 +243,12 @@ describe('/resend-verification route', () => {
   it('should return 200 if verification email is resent successfully', async () => {
     pool.query.mockResolvedValueOnce({ rows: [{ is_verified: false, verification_attempts: 1 }] }); // Able to resend
 
-    const nodemailer = require('nodemailer');
-    const sendMailMock = nodemailer.createTransport().sendMail;
-
     const response = await request(app)
       .post('/resend-verification')
       .send({ email: 'user@example.com' });
 
     expect(response.statusCode).toBe(200);
-    expect(sendMailMock).toHaveBeenCalled();
     expect(response.text).toBe('Verification email resent');
+    expect(sendMailStub.calledOnce).toBeTruthy()
   });
 });
