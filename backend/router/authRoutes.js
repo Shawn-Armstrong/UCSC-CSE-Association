@@ -10,7 +10,6 @@ const transporter = require('../services/emailService');
 const router = express.Router();
 const SECRET_KEY = 'your_secret_key';
 
-// Middleware to authenticate the token
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
@@ -33,6 +32,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
         }
 
         res.json(userResult.rows[0]);
+        
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error retrieving profile');
@@ -260,7 +260,6 @@ router.post('/resend-verification', async (req, res) => {
                 return res.status(200).send('Verification email resent');
             }
         });
-
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error');
