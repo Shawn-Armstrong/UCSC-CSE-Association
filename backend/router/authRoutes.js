@@ -11,17 +11,19 @@ const router = express.Router();
 const SECRET_KEY = 'your_secret_key';
 
 const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = req.cookies.token;
 
     if (token == null) return res.sendStatus(401);
 
     jwt.verify(token, SECRET_KEY, (err, user) => {
         if (err) return res.sendStatus(403);
+
         req.user = user;
+
         next();
     });
 };
+
 
 router.get('/profile', authenticateToken, async (req, res) => {
     try {
@@ -32,7 +34,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
         }
 
         res.json(userResult.rows[0]);
-        
+
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error retrieving profile');
@@ -63,7 +65,8 @@ router.post('/login', async (req, res) => {
 
         const token = jwt.sign({ userId: user.id }, SECRET_KEY, { expiresIn: '1h' });
 
-        res.json({ token });
+        res.cookie('token', token, { httpOnly: true, sameSite: 'Strict', path: '/', secure: process.env.NODE_ENV !== 'development' });
+        res.status(200).send('Login successful');
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error during login');
