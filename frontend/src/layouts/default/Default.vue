@@ -1,8 +1,12 @@
 <template>
   <v-app>
     <NavBar />
-    <router-view v-slot="{ Component }">
-      <transition name="fade" mode="out-in">
+    <router-view v-slot="{ Component, route }">
+      <transition
+        :enter-active-class="route.meta.enterClass"
+        :leave-active-class="route.meta.leaveClass"
+        mode="out-in"
+      >
         <component :key="$route.path" :is="Component" />
       </transition>
     </router-view>
@@ -11,6 +15,7 @@
 </template>
 
 <script setup>
+import "animate.css";
 import NavBar from "./NavBar.vue";
 import FooterBar from "./FooterBar.vue";
 </script>
