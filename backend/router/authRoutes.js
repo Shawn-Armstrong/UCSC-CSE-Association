@@ -65,7 +65,12 @@ router.post('/login', async (req, res) => {
 
         const token = jwt.sign({ userId: user.id }, SECRET_KEY, { expiresIn: '1h' });
 
-        res.cookie('token', token, { httpOnly: true, sameSite: 'Strict', path: '/', secure: process.env.NODE_ENV !== 'development' });
+        res.cookie('token', token, {
+            httpOnly: true,
+            sameSite: 'Strict',
+            secure: process.env.NODE_ENV !== 'development',
+            path: '/',
+        });
         res.status(200).send('Login successful');
     } catch (err) {
         console.error(err);
@@ -267,6 +272,10 @@ router.post('/resend-verification', async (req, res) => {
         console.error(err);
         res.status(500).send('Server error');
     }
+});
+
+router.get('/validate-session', authenticateToken, (req, res) => {
+    res.status(200).json({ isAuthenticated: true });
 });
 
 module.exports = router;

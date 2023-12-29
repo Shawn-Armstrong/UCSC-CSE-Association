@@ -1,7 +1,16 @@
 import { createRouter, createWebHistory } from 'vue-router';
 
-function isLoggedIn() {
-  return localStorage.getItem('token') !== null;
+import axios from 'axios';
+axios.defaults.withCredentials = true;
+
+// Function to check if the user is logged in
+async function isLoggedIn() {
+    try {
+        const response = await axios.get('http://localhost:5000/validate-session');
+        return response.data.isAuthenticated;
+    } catch (error) {
+        return false;
+    }
 }
 
 const routes = [
@@ -78,16 +87,12 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach((to, from, next) => {
-  if (to.matched.some(record => record.meta.requiresAuth)) {
-    if (!isLoggedIn()) {
-      // Redirect to the login page if the user is not logged in
+router.beforeEach(async (to, from, next) => {
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+  if (requiresAuth && !(await isLoggedIn())) {
       next({ name: 'Login' });
-    } else {
-      next(); // Proceed if the user is logged in
-    }
   } else {
-    next(); // Proceed for routes that don't require authentication
+      next();
   }
 });
 
