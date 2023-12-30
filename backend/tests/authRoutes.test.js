@@ -54,7 +54,7 @@ describe('/login route', () => {
     expect(response.text).toBe('Account verification required');
   });
 
-  it('should return 200 with a token if credentials are valid', async () => {
+  it('should return 200 and set an HTTP-only cookie if credentials are valid', async () => {
     pool.query.mockResolvedValueOnce({
       rows: [{ id: 1, is_verified: true, password_hash: 'hashedpassword' }]
     });
@@ -65,9 +65,16 @@ describe('/login route', () => {
       .send({ email: 'user@example.com', password: 'password123' });
 
     expect(response.statusCode).toBe(200);
-    expect(response.body).toHaveProperty('token');
+
+    expect(response.headers['set-cookie']).toBeDefined();
+
+    // Use a more flexible regex to account for the presence of the 'Secure' attribute
+    const cookieRegex = /token=.+; Path=\/; HttpOnly; (Secure; )?SameSite=Strict/;
+    expect(response.headers['set-cookie'][0]).toMatch(cookieRegex);
+
     expect(jwt.sign).toHaveBeenCalledTimes(1);
   });
+
 
   it('should return 401 for invalid credentials', async () => {
     // Mock the database query to return a user
@@ -85,6 +92,23 @@ describe('/login route', () => {
     expect(response.statusCode).toBe(401);
     expect(response.text).toBe('Invalid credentials');
   });
+
+  it('should return 500 on server error', async () => {
+    // Mock the database query to throw an error
+    pool.query.mockRejectedValue(new Error('Server error'));
+
+    const response = await request(app)
+      .post('/login')
+      .send({ email: 'user@example.com', password: 'password123' });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.text).toBe('Server error during login');
+
+    // Optionally, check if console.error was called with the error
+    // Note: You'll need to mock console.error before this test
+    // expect(console.error).toHaveBeenCalledWith(expect.any(Error));
+  });
+
 });
 
 describe('/verify-email route', () => {
@@ -211,7 +235,7 @@ describe('/register route', () => {
     expect(response.statusCode).toBe(500);
     expect(response.body).toEqual({ message: 'Error sending email' });
   });
-  
+
   it('should return 500 if a server error occurs during registration', async () => {
     // Mock the database query to throw an error
     pool.query.mockRejectedValue(new Error('Database error'));
@@ -263,11 +287,11 @@ describe('/reset-password/confirm route', () => {
   it('should respond with a generic message even if the user does not exist', async () => {
     // Mock the database query to return no user
     pool.query.mockResolvedValueOnce({ rows: [] });
-  
+
     const response = await request(app)
       .post('/reset-password')
       .send({ email: 'nonexistent@example.com' });
-  
+
     expect(response.statusCode).toBe(200);
     expect(response.body.message).toBe("If an account with that email exists, a password reset link has been sent.");
   });
@@ -275,28 +299,28 @@ describe('/reset-password/confirm route', () => {
   it('should return 500 if a server error occurs during password reset', async () => {
     // Mock the database query to throw an error
     pool.query.mockRejectedValue(new Error('Database error'));
-  
+
     const response = await request(app)
       .post('/reset-password')
       .send({ email: 'user@example.com' });
-  
+
     expect(response.statusCode).toBe(500);
     expect(response.body.message).toBe('Server error during password reset');
-  });  
+  });
 
   it('should send a password reset email if the user exists', async () => {
     // Mock the database query to return a user
     pool.query.mockResolvedValueOnce({ rows: [{ id: 1, email: 'existinguser@example.com' }] });
-  
+
     // Mock the email sending to be successful
     jest.spyOn(transporter, 'sendMail').mockImplementation((mailOptions, callback) => {
       callback(null, { response: '250 OK' });
     });
-  
+
     const response = await request(app)
       .post('/reset-password')
       .send({ email: 'existinguser@example.com' });
-  
+
     expect(response.statusCode).toBe(200);
     expect(response.body.message).toBe("If an account with that email exists, a password reset link has been sent.");
   });
@@ -304,20 +328,20 @@ describe('/reset-password/confirm route', () => {
   it('should return 500 if there is an error sending the reset password email', async () => {
     // Mock the database query to return a user
     pool.query.mockResolvedValueOnce({ rows: [{ id: 1, email: 'user@example.com' }] });
-  
+
     // Mock the email sending to fail
     jest.spyOn(transporter, 'sendMail').mockImplementation((mailOptions, callback) => {
       callback(new Error('Email sending error'), null);
     });
-  
+
     const response = await request(app)
       .post('/reset-password')
       .send({ email: 'user@example.com' });
-  
+
     expect(response.statusCode).toBe(500);
     expect(response.body.message).toBe('Error sending reset password email');
   });
-  
+
   it('should return 500 if a server error occurs during password reset confirmation', async () => {
     // Mock the database query to throw an error
     pool.query.mockRejectedValue(new Error('Database error'));
@@ -465,7 +489,7 @@ describe('authenticateToken middleware', () => {
     expect(response.statusCode).toBe(401);
   });
 
-  it('should return 403 if token is invalid', async () => {
+  it('should return 401 if token is invalid', async () => {
     jwt.verify.mockImplementation((token, secret, callback) => {
       callback(new Error('Invalid token'), null);
     });
@@ -474,7 +498,7 @@ describe('authenticateToken middleware', () => {
       .get('/profile')
       .set('Authorization', 'Bearer invalid.token');
 
-    expect(response.statusCode).toBe(403);
+    expect(response.statusCode).toBe(401);
   });
 
   it('should allow access with a valid token', async () => {
@@ -488,8 +512,8 @@ describe('authenticateToken middleware', () => {
     pool.query.mockResolvedValueOnce({ rows: [{ id: 1, username: 'testuser', email: 'test@example.com' }] });
 
     const response = await request(app)
-      .get('/profile') // Replace with your actual protected route
-      .set('Authorization', 'Bearer valid.token');
+      .get('/profile')
+      .set('Cookie', [`token=valid.token`]); // Simulate sending the token as a cookie
 
     expect(response.statusCode).toBe(200);
     // Further assertions based on the expected response
@@ -513,38 +537,37 @@ describe('/profile route', () => {
   });
 
   it('should return 404 if user is not found', async () => {
-    // Mock the database query to return an empty array
+    // Mock jwt.verify for a valid token scenario
+    jwt.verify.mockImplementation((token, secret, callback) => {
+      callback(null, { userId: 1 }); // Simulate a valid user context
+    });
+
+    // Mock the database query to return an empty array, simulating user not found
     pool.query.mockResolvedValueOnce({ rows: [] });
 
     const response = await request(app)
       .get('/profile')
-      .set('Authorization', 'Bearer valid.token');
+      .set('Cookie', [`token=valid.token`]); // Simulate sending the token as a cookie
 
     expect(response.statusCode).toBe(404);
     expect(response.text).toBe('User not found');
   });
 
   it('should return 500 on server error', async () => {
+    // Mock jwt.verify for a valid token scenario
+    jwt.verify.mockImplementation((token, secret, callback) => {
+      callback(null, { userId: 1 }); // Simulate a valid user context
+    });
+
     // Mock the database query to reject with an error
     pool.query.mockRejectedValue(new Error('Server error'));
 
     const response = await request(app)
       .get('/profile')
-      .set('Authorization', 'Bearer valid.token');
+      .set('Cookie', [`token=valid.token`]); // Simulate sending the token as a cookie
 
     expect(response.statusCode).toBe(500);
     expect(response.text).toBe('Server error retrieving profile');
   });
 
-  it('should return 500 on server error', async () => {
-    // Mock the database query to throw an error
-    pool.query.mockRejectedValue(new Error('Database error'));
-
-    const response = await request(app)
-      .post('/login')
-      .send({ email: 'user@example.com', password: 'password123' });
-
-    expect(response.statusCode).toBe(500);
-    expect(response.text).toBe('Server error during login');
-  });
 });
