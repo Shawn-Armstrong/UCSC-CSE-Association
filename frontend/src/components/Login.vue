@@ -23,7 +23,10 @@
             <div
               v-if="message"
               align="center"
-              :class="{'text-success': isSuccessMessage, 'text-error': !isSuccessMessage}"
+              :class="{
+                'text-success': isSuccessMessage,
+                'text-error': !isSuccessMessage,
+              }"
               class="mb-3 message"
             >
               {{ message }}
@@ -41,7 +44,7 @@
               v-model="password"
             ></v-text-field>
             <div v-if="email && email.length > 0" class="text-right">
-              <v-btn text density="compact" size="small" color="primary" @click="resetPassword">Forgot Password?</v-btn>
+              <v-btn variant="text" density="compact" size="small" @click="resetPassword">Forgot Password?</v-btn>
             </div>
           </v-card-text>
           <v-card-actions>
@@ -56,71 +59,79 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import axios from 'axios';
-import { useRouter } from 'vue-router';
+import { ref } from "vue";
+import axios from "axios";
+import { useRouter } from "vue-router";
 
-const email = ref('');
-const password = ref('');
-const verificationError = ref('');
-const message = ref('');
+const email = ref("");
+const password = ref("");
+const verificationError = ref("");
+const message = ref("");
 const isSuccessMessage = ref(false);
 const router = useRouter();
 
 const goBack = () => {
-  router.push('/');
+  router.push("/");
 };
 
 const submit = async () => {
-  verificationError.value = '';
-  message.value = '';
+  verificationError.value = "";
+  message.value = "";
   isSuccessMessage.value = false;
 
   // Check if email and password are not empty before attempting to log in
   if (!email.value || !password.value) {
-    message.value = 'Please enter both email and password.';
+    message.value = "Please enter both email and password.";
     return;
   }
 
   try {
-    const response = await axios.post('http://localhost:5000/login', {
+    const response = await axios.post("http://localhost:5000/login", {
       email: email.value,
       password: password.value,
     });
-    localStorage.setItem('token', response.data.token);
-    router.push('/profile');
+    router.push("/profile");
   } catch (error) {
     // Specific status code check for verification error
-    if (error.response && error.response.status === 403 && error.response.data === 'Account verification required') {
+    if (
+      error.response &&
+      error.response.status === 403 &&
+      error.response.data === "Account verification required"
+    ) {
       verificationError.value = error.response.data;
     } else {
       // For all other errors, don't show the verification error message or button
-      message.value = 'Login failed. Please try again.';
+      message.value = "Login failed. Please try again.";
       isSuccessMessage.value = false;
     }
   }
 };
 
-
 const resendVerificationEmail = async () => {
-  verificationError.value = '';
-  message.value = '';
+  verificationError.value = "";
+  message.value = "";
   isSuccessMessage.value = false;
 
   try {
-    const response = await axios.post('http://localhost:5000/resend-verification', {
-      email: email.value,
-    });
-    message.value = response.data.message || "Verification email resent successfully.";
+    const response = await axios.post(
+      "http://localhost:5000/resend-verification",
+      {
+        email: email.value,
+      }
+    );
+    message.value =
+      response.data.message || "Verification email resent successfully.";
     isSuccessMessage.value = true;
   } catch (error) {
-    message.value = error.response ? error.response.data : "Error occurred while resending verification email.";
+    message.value = error.response
+      ? error.response.data
+      : "Error occurred while resending verification email.";
     isSuccessMessage.value = false;
   }
 };
 
 const resetPassword = () => {
-  router.push('/password-reset'); // Make sure this route matches your actual route for resetting password
+  router.push("/password-reset"); // Make sure this route matches your actual route for resetting password
 };
 </script>
 

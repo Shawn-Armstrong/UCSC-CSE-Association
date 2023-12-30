@@ -26,28 +26,24 @@ import { useRouter } from 'vue-router';
 
 const userProfile = ref({});
 const router = useRouter();
-
 onMounted(async () => {
   try {
-    const token = localStorage.getItem("token");
-    const response = await axios.get("http://localhost:5000/profile", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await axios.get("http://localhost:5000/profile");
     userProfile.value = response.data;
   } catch (error) {
     console.error("Error fetching profile:", error.response.data);
-    // Redirect to login page if there's an error (e.g., token is invalid)
-    router.push('/');
+    router.push('/login');
   }
 });
 
-const logout = () => {
-  // Clear authentication token or other relevant data
-  localStorage.removeItem('token');
+const logout = async () => {
+  try {
+    await axios.post('http://localhost:5000/logout');
 
-  // Redirect to the login page
-  router.push('/');
+    router.push('/');
+  } catch (error) {
+    console.error("Error during logout:", error.response.data);
+    // Handle logout error
+  }
 };
 </script>

@@ -278,4 +278,9 @@ router.get('/validate-session', authenticateToken, (req, res) => {
     res.status(200).json({ isAuthenticated: true });
 });
 
+router.post('/logout', (req, res) => {
+    res.clearCookie('token');
+    res.status(200).send('Logged out successfully');
+});
+
 module.exports = router;

@@ -94,9 +94,13 @@ describe('/login route', () => {
   });
 
   it('should return 500 on server error', async () => {
+    // Step 1: Mock console.error
+    jest.spyOn(console, 'error').mockImplementation(() => { });
+
     // Mock the database query to throw an error
     pool.query.mockRejectedValue(new Error('Server error'));
 
+    // Step 2: Run your test
     const response = await request(app)
       .post('/login')
       .send({ email: 'user@example.com', password: 'password123' });
@@ -104,9 +108,11 @@ describe('/login route', () => {
     expect(response.statusCode).toBe(500);
     expect(response.text).toBe('Server error during login');
 
-    // Optionally, check if console.error was called with the error
-    // Note: You'll need to mock console.error before this test
-    // expect(console.error).toHaveBeenCalledWith(expect.any(Error));
+    // Step 3: Assert that console.error was called with an Error
+    expect(console.error).toHaveBeenCalledWith(expect.any(Error));
+
+    // Step 4: Restore console.error
+    console.error.mockRestore();
   });
 
 });
@@ -468,6 +474,33 @@ describe('/resend-verification route', () => {
       [user.id]
     );
   });
+
+  it('should return 500 if there is an error sending email', async () => {
+    // Ensure there are no conflicting mocks on transporter.sendMail
+    jest.restoreAllMocks();
+
+    // Mock transporter.sendMail to simulate an error
+    jest.spyOn(transporter, 'sendMail').mockImplementation((mailOptions, callback) => {
+      callback(new Error('Email sending failed'), null);
+    });
+
+    // Mock database query to return a user who needs verification
+    pool.query.mockResolvedValueOnce({
+      rows: [{ id: 1, email: 'user@example.com', is_verified: false, verification_attempts: 0, last_verification_attempt: null }]
+    });
+
+    // Call the /resend-verification endpoint
+    const response = await request(app)
+      .post('/resend-verification')
+      .send({ email: 'user@example.com' });
+
+    // Assert the response
+    expect(response.statusCode).toBe(500);
+    expect(response.text).toBe('Error sending email');
+
+    // Restore the original sendMail method
+    transporter.sendMail.mockRestore();
+  });
 });
 
 describe('authenticateToken middleware', () => {
@@ -517,6 +550,20 @@ describe('authenticateToken middleware', () => {
 
     expect(response.statusCode).toBe(200);
     // Further assertions based on the expected response
+  });
+
+  it('should return 403 if token verification fails', async () => {
+    // Mock jwt.verify to simulate a verification error
+    jwt.verify.mockImplementation((token, secret, callback) => {
+      callback(new Error('Token verification failed'), null); // Simulate verification failure
+    });
+
+    // Send a request with a token that will trigger the verification failure
+    const response = await request(app)
+      .get('/profile') // Assuming /profile uses authenticateToken middleware
+      .set('Cookie', [`token=failing.token`]);
+
+    expect(response.statusCode).toBe(403);
   });
 });
 
@@ -570,4 +617,44 @@ describe('/profile route', () => {
     expect(response.text).toBe('Server error retrieving profile');
   });
 
+});
+
+describe('/validate-session route', () => {
+  it('should return isAuthenticated true for a valid token', async () => {
+    // Generate a valid JWT token
+    const validToken = jwt.sign({ userId: 1 }, 'your_secret_key', { expiresIn: '1h' });
+
+    const response = await request(app)
+      .get('/validate-session')
+      .set('Cookie', [`token=${validToken}`]); // Send the valid token as a cookie
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual({ isAuthenticated: true });
+  });
+
+  it('should return 401 for an invalid or missing token', async () => {
+    const response = await request(app)
+      .get('/validate-session');
+
+    expect(response.statusCode).toBe(401);
+  });
+});
+
+
+describe('/logout route', () => {
+  it('should clear the token cookie and return a success message', async () => {
+    const response = await request(app)
+      .post('/logout');
+
+    // Check if the cookie 'token' is being cleared. Look for a cookie set with an expired or immediate expiry date
+    const cookieHeader = response.headers['set-cookie'][0];
+    expect(cookieHeader).toContain('token=;');
+    expect(cookieHeader).toContain('Expires=');
+
+    // Check if the response status is 200
+    expect(response.statusCode).toBe(200);
+
+    // Check if the response message is 'Logged out successfully'
+    expect(response.text).toBe('Logged out successfully');
+  });
 });
