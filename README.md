@@ -12,7 +12,6 @@
 - Git
 - Docker
 
-
 ### Instructions
 1. Clone the repository 
      
@@ -34,61 +33,7 @@
 ### Overview
 - Frontend use JavaScript's Vuejs framework in conjunction with Vuetify 3.X UI framework hosted on port 3000
 - Backend uses JavaScript's Nodejs runtime in conjunction with Expressjs web application framework listening on port 5000
-- Database is a PostgreSQL instance listening in port 5432 with credentials `user=user`, `password=password`
-
-### Register
-
-```mermaid
-sequenceDiagram
-  Client->>Client: 1. Render Register component at /register route<br>2. Collect new user information
-  Client->>Server: 1. Request, POST, /register, payload = user information
-  Server->>Server: 1. Receive / extract user information from request object<br>2. Create query to check if username / email are free
-  Server->>Database: Send query
-  Database->>Database: Execute query
-  Database->>Server: Send query results
-  Server->>Server: Generate 
-```
-
-
-<!-- ```mermaid
-sequenceDiagram
-  Client->>Server: Hello John, how are you?
-  alt Event2
-      Server->>Server: Fight against hypochondria
-  end
-  Note right of Server: Rational thoughts!
-  Server->>Client: Great!
-  Server->>Database: How about you?
-  alt Event3
-      Server->>Server: fdd
-  end
-  Database->>Server: Jolly good!
-```
- -->
-
-
-<!-- 
-### Register
-
-### Verify e-mail
-
-### Resend verification
-
-### Login
-
-### Reset password
-
-### Logout
-
-### Profile
-
-### Transitions
-
-
-
-
-
-
+- Database is a PostgreSQL instance, `mydatabase` listening on port 5432 with credentials `user=user`, `password=password`
 
 
 <!-- 
@@ -136,4 +81,4 @@ sequenceDiagram
   - If JWT is cache, allow navigation; otherwise, redirect to login. 
 - [X] Frontend responsive video
   ### Details
-  - Old video has an encoding issue which was resolved --> -->
+  - Old video has an encoding issue which was resolved --> 
