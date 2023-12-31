@@ -7,23 +7,11 @@ const { Pool } = require('pg');
 const pool = require('../services/databaseService');
 const transporter = require('../services/emailService');
 const { requestPasswordReset, confirmPasswordReset } = require('../services/passwordService');
+const authenticateToken = require('../middlewares/authenticateToken');
+const SECRET_KEY = process.env.SECRET_KEY;
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
 const router = express.Router();
-const SECRET_KEY = 'your_secret_key';
-
-const authenticateToken = (req, res, next) => {
-    const token = req.cookies.token;
-
-    if (token == null) return res.sendStatus(401);
-
-    jwt.verify(token, SECRET_KEY, (err, user) => {
-        if (err) return res.sendStatus(403);
-
-        req.user = user;
-
-        next();
-    });
-};
 
 router.get('/profile', authenticateToken, async (req, res) => {
     try {
@@ -110,7 +98,7 @@ router.post('/register', async (req, res) => {
             from: 'timeforfree99@gmail.com',
             to: email,
             subject: 'Please confirm your email account',
-            html: `<p>Please confirm your email by clicking on the following link:</p><a href="http://localhost:3000/verify-email?token=${verificationToken}">Verify Email</a></p>`
+            html: `<p>Please confirm your email by clicking on the following link:</p><a href="${FRONTEND_URL}/verify-email?token=${verificationToken}">Verify Email</a></p>`
         };
 
         transporter.sendMail(mailOptions, function (error, info) {
@@ -197,7 +185,7 @@ router.post('/resend-verification', async (req, res) => {
             from: 'your-email@example.com',
             to: email,
             subject: 'Please confirm your email account',
-            html: `<p>Please confirm your email by clicking on the following link:</p><a href="http://localhost:3000/verify-email?token=${user.verification_token}">Verify Email</a></p>`
+            html: `<p>Please confirm your email by clicking on the following link:</p><a href="${FRONTEND_URL}/verify-email?token=${user.verification_token}">Verify Email</a></p>`
         };
 
         transporter.sendMail(mailOptions, function (error, info) {
