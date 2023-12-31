@@ -24,7 +24,6 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-
 router.get('/profile', authenticateToken, async (req, res) => {
     try {
         const userResult = await pool.query('SELECT id, username, email FROM users WHERE id = $1', [req.user.userId]);
