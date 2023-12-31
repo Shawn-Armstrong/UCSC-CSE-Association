@@ -6,6 +6,7 @@ const nodemailer = require('nodemailer');
 const { Pool } = require('pg');
 const pool = require('../services/databaseService');
 const transporter = require('../services/emailService');
+const { requestPasswordReset, confirmPasswordReset } = require('../services/passwordService');
 
 const router = express.Router();
 const SECRET_KEY = 'your_secret_key';
@@ -148,73 +149,14 @@ router.get('/verify-email', async (req, res) => {
 });
 
 router.post('/reset-password', async (req, res) => {
-    const { email } = req.body;
-
-    try {
-        const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-
-        const genericResponse = { message: "If an account with that email exists, a password reset link has been sent." };
-
-        if (userResult.rows.length === 0) {
-            return res.status(200).json(genericResponse);
-        }
-
-        const user = userResult.rows[0];
-        const passwordResetToken = crypto.randomBytes(20).toString('hex');
-        const expirationTime = new Date(Date.now() + 3600000);
-
-        await pool.query(
-            'UPDATE users SET password_reset_token = $1, password_reset_expires = $2 WHERE id = $3',
-            [passwordResetToken, expirationTime, user.id]
-        );
-
-        const resetLink = `http://localhost:3000/password-reset-form?token=${passwordResetToken}`;
-
-        const mailOptions = {
-            from: 'timeforfree99@gmail.com',
-            to: email,
-            subject: 'Reset Your Password',
-            html: `
-        <p>You requested a password reset. Click the link below to reset your password. This link will expire in 1 hour.</p>
-        <a href="${resetLink}">Reset Password</a>
-      `
-        };
-
-        transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                console.error(error);
-                return res.status(500).json({ message: 'Error sending reset password email' });
-            } else {
-                console.log('Password reset email sent:', info.response);
-                return res.status(200).json(genericResponse);
-            }
-        });
-    } catch (err) {
-        console.error(err);
-        return res.status(500).json({ message: 'Server error during password reset' });
-    }
+    const response = await requestPasswordReset(req.body.email);
+    res.status(200).json(response);
 });
 
 router.post('/reset-password/confirm', async (req, res) => {
     const { token, newPassword } = req.body;
-
-    try {
-        const userResult = await pool.query('SELECT * FROM users WHERE password_reset_token = $1 AND password_reset_expires > NOW()', [token]);
-
-        if (userResult.rows.length === 0) {
-            return res.status(400).json({ message: "Password reset token is invalid or has expired." });
-        }
-
-        const user = userResult.rows[0];
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-        await pool.query('UPDATE users SET password_hash = $1, password_reset_token = NULL, password_reset_expires = NULL WHERE id = $2', [hashedPassword, user.id]);
-
-        res.status(200).json({ message: "Your password has been reset successfully." });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Server error during password reset confirmation." });
-    }
+    const response = await confirmPasswordReset(token, newPassword);
+    res.status(response.status).json({ message: response.message });
 });
 
 router.post('/resend-verification', async (req, res) => {
