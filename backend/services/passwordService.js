@@ -7,7 +7,6 @@ async function requestPasswordReset(email) {
     const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
 
     if (userResult.rows.length === 0) {
-        // It's common practice to not reveal whether an email is registered in the system
         return { message: "If an account with that email exists, a password reset link has been sent." };
     }
 

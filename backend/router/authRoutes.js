@@ -1,13 +1,10 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
-const nodemailer = require('nodemailer');
-const { Pool } = require('pg');
-const pool = require('../services/databaseService');
-const transporter = require('../services/emailService');
 const { requestPasswordReset, confirmPasswordReset } = require('../services/passwordService');
 const authenticateToken = require('../middlewares/authenticateToken');
+const { sendVerificationEmail } = require('../services/emailService');
+const { updateUserVerificationAttempt, getUserByEmail, createUser, verifyUser, getUserById } = require('../services/userService');
 const SECRET_KEY = process.env.SECRET_KEY;
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
@@ -15,14 +12,9 @@ const router = express.Router();
 
 router.get('/profile', authenticateToken, async (req, res) => {
     try {
-        const userResult = await pool.query('SELECT id, username, email FROM users WHERE id = $1', [req.user.userId]);
-
-        if (userResult.rows.length === 0) {
-            return res.status(404).send('User not found');
-        }
-
-        res.json(userResult.rows[0]);
-
+        const user = await getUserById(req.user.userId);
+        if (!user) return res.status(404).send('User not found');
+        res.json(user);
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error retrieving profile');
@@ -31,34 +23,14 @@ router.get('/profile', authenticateToken, async (req, res) => {
 
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
-
     try {
-        const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-
-        if (userResult.rows.length === 0) {
-            return res.status(401).send('User does not exist');
-        }
-
-        const user = userResult.rows[0];
-
-        if (!user.is_verified) {
-            return res.status(403).send('Account verification required');
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password_hash);
-
-        if (!isMatch) {
-            return res.status(401).send('Invalid credentials');
-        }
-
+        const user = await getUserByEmail(email);
+        if (!user) return res.status(401).send('User does not exist');
+        if (!user.is_verified) return res.status(403).send('Account verification required');
+        if (!await bcrypt.compare(password, user.password_hash)) return res.status(401).send('Invalid credentials');
+        
         const token = jwt.sign({ userId: user.id }, SECRET_KEY, { expiresIn: '1h' });
-
-        res.cookie('token', token, {
-            httpOnly: true,
-            sameSite: 'Strict',
-            secure: process.env.NODE_ENV !== 'development',
-            path: '/',
-        });
+        res.cookie('token', token, { httpOnly: true, sameSite: 'Strict', secure: process.env.NODE_ENV !== 'development', path: '/' });
         res.status(200).send('Login successful');
     } catch (err) {
         console.error(err);
@@ -67,69 +39,29 @@ router.post('/login', async (req, res) => {
 });
 
 router.post('/register', async (req, res) => {
+    const { username, email, password } = req.body;
     try {
-        const { username, email, password } = req.body;
+        const existingUser = await getUserByEmail(email);
+        if (existingUser) return res.status(409).send('Email is already registered');
 
-        const checkResult = await pool.query(
-            'SELECT email, username FROM users WHERE email = $1 OR username = $2',
-            [email, username]
-        );
+        const newUser = await createUser(username, email, password);
+        await sendVerificationEmail(email, newUser.verification_token, FRONTEND_URL);
 
-        let message = '';
-        if (checkResult.rows.some(row => row.email === email)) {
-            message = 'Email is already registered';
-        } else if (checkResult.rows.some(row => row.username === username)) {
-            message = 'Username is already taken';
-        }
-
-        if (message) {
-            return res.status(409).json({ message });
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const verificationToken = crypto.randomBytes(20).toString('hex');
-
-        const insertResult = await pool.query(
-            'INSERT INTO users (username, email, password_hash, verification_token) VALUES ($1, $2, $3, $4) RETURNING id',
-            [username, email, hashedPassword, verificationToken]
-        );
-
-        const mailOptions = {
-            from: 'timeforfree99@gmail.com',
-            to: email,
-            subject: 'Please confirm your email account',
-            html: `<p>Please confirm your email by clicking on the following link:</p><a href="${FRONTEND_URL}/verify-email?token=${verificationToken}">Verify Email</a></p>`
-        };
-
-        transporter.sendMail(mailOptions, function (error, info) {
-            if (error) {
-                console.error(error);
-                return res.status(500).json({ message: 'Error sending email' });
-            } else {
-                console.log('Verification email sent: ' + info.response);
-                return res.status(201).json({ message: 'Registration successful. Verification email sent.', userId: insertResult.rows[0].id });
-            }
-        });
+        res.status(201).json({ message: 'Registration successful. Verification email sent.', userId: newUser.id });
     } catch (err) {
         console.error(err);
-        return res.status(500).json({ message: 'Server error during registration' });
+        res.status(500).json({ message: 'Server error during registration' });
     }
 });
 
 router.get('/verify-email', async (req, res) => {
     try {
         const { token } = req.query;
-
-        const result = await pool.query(
-            'UPDATE users SET is_verified = true WHERE verification_token = $1 RETURNING *',
-            [token]
-        );
-
-        if (result.rows.length === 0) {
-            return res.status(400).send('Invalid or expired token');
+        if (await verifyUser(token)) {
+            res.send('Email successfully verified!');
+        } else {
+            res.status(400).send('Invalid or expired token');
         }
-
-        res.send('Email successfully verified!');
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error during verification');
@@ -149,54 +81,27 @@ router.post('/reset-password/confirm', async (req, res) => {
 
 router.post('/resend-verification', async (req, res) => {
     const { email } = req.body;
-
     try {
-        const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+        const user = await getUserByEmail(email);
 
-        if (userResult.rows.length === 0) {
+        if (!user) {
             return res.status(404).send('User not found');
         }
-
-        const user = userResult.rows[0];
 
         if (user.is_verified) {
             return res.status(400).send('Account already verified');
         }
 
-        // Check if the last attempt was more than an hour ago
-        const oneHourAgo = new Date(Date.now() - 3600000); // 3600000 milliseconds = 1 hour
-        if (user.last_verification_attempt && user.last_verification_attempt < oneHourAgo) {
-            // Reset the count if the last attempt was over an hour ago
-            await pool.query('UPDATE users SET verification_attempts = 0 WHERE id = $1', [user.id]);
-            user.verification_attempts = 0;
-        }
-
-        // Check if the attempt limit has been reached
-        if (user.verification_attempts >= 3) {
-            // If the user already tried 3 times within the last hour, don't allow another attempt
-            return res.status(429).send('Verification email resend limit reached. Please try again later.');
-        }
-
-        // Increment the verification attempt count and update the last attempt timestamp
-        await pool.query('UPDATE users SET verification_attempts = verification_attempts + 1, last_verification_attempt = NOW() WHERE id = $1', [user.id]);
-
-        // Proceed to send the email
-        const mailOptions = {
-            from: 'your-email@example.com',
-            to: email,
-            subject: 'Please confirm your email account',
-            html: `<p>Please confirm your email by clicking on the following link:</p><a href="${FRONTEND_URL}/verify-email?token=${user.verification_token}">Verify Email</a></p>`
-        };
-
-        transporter.sendMail(mailOptions, function (error, info) {
-            if (error) {
-                console.log(error);
-                return res.status(500).send('Error sending email');
-            } else {
-                console.log('Verification email resent: ' + info.response);
-                return res.status(200).send('Verification email resent');
+        try {
+            await updateUserVerificationAttempt(user.id);
+            await sendVerificationEmail(email, user.verification_token, FRONTEND_URL);
+            return res.status(200).send('Verification email resent');
+        } catch (error) {
+            if (error.message === 'Verification email resend limit reached') {
+                return res.status(429).send(error.message);
             }
-        });
+            throw error;
+        }
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error');
