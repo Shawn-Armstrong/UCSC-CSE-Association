@@ -1,18 +1,21 @@
 <template>
   <v-app>
     <NavBar />
-    <router-view v-slot="{ Component, route }">
-      <transition
-        :enter-active-class="route.meta.enterClass"
-        :leave-active-class="route.meta.leaveClass"
-        mode="out-in"
-      >
-        <component :key="$route.path" :is="Component" />
-      </transition>
-    </router-view>
+    <v-main>
+      <router-view v-slot="{ Component, route }">
+        <transition
+          :enter-active-class="route.meta.enterClass"
+          :leave-active-class="route.meta.leaveClass"
+          mode="out-in"
+        >
+          <component :key="$route.path" :is="Component" />
+        </transition>
+      </router-view>
+    </v-main>
     <FooterBar />
   </v-app>
 </template>
+
 
 <script setup>
 import "animate.css";
