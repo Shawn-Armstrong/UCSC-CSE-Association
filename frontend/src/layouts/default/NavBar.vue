@@ -1,5 +1,5 @@
 <template>
-    <v-app-bar class="pa-0" app color=primary dark hide-on-scroll></v-app-bar>
+    <v-app-bar app color=primary></v-app-bar>
 </template>
 
 <script setup>
