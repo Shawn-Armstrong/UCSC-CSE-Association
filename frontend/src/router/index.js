@@ -78,6 +78,15 @@ const routes = [
         },
         component: () => import('@/views/PasswordResetForm.vue'),
       },
+      {
+        path: '/Sandbox',
+        name: 'Sandbox',
+        meta: {
+          enterClass: 'animate__animated animate__fadeInRight',
+          leaveClass: 'animate__animated animate__fadeOut',
+        },
+        component: () => import('@/views/Sandbox.vue'),
+      },
     ],
   },
 ];
