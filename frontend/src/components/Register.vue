@@ -44,24 +44,33 @@
         </v-card>
       </v-col>
     </v-row>
+
+    <v-overlay :model-value="overlay" class="align-center justify-center">
+      <v-progress-circular
+        color="primary"
+        indeterminate
+        size="64"
+      ></v-progress-circular>
+    </v-overlay>
   </v-container>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import axios from 'axios';
-import { useRouter } from 'vue-router';
+import { ref, computed } from "vue";
+import axios from "axios";
+import { useRouter } from "vue-router";
 
-const username = ref('');
-const email = ref('');
-const password = ref('');
-const confirmPassword = ref(''); // New ref for the password confirmation
-const message = ref('');
+const username = ref("");
+const email = ref("");
+const password = ref("");
+const confirmPassword = ref(""); // New ref for the password confirmation
+const message = ref("");
 const isSuccessMessage = ref(false);
 const router = useRouter();
+const overlay = ref(false);
 
 const goBack = () => {
-  router.push('/');
+  router.push("/");
 };
 
 const submit = async () => {
@@ -71,43 +80,44 @@ const submit = async () => {
     return;
   }
 
-  message.value = ''; // Reset the message before the new submission
+  message.value = ""; // Reset the message before the new submission
   isSuccessMessage.value = false;
-  
+
   try {
-    const response = await axios.post('http://localhost:5000/register', {
+    overlay.value = true;
+    const response = await axios.post("http://localhost:5000/register", {
       username: username.value,
       email: email.value,
-      password: password.value
-    });
+      password: password.value,
+    }).then((response) => {
+      overlay.value = false;
+    })
     message.value = "Registration successful. Redirecting to login...";
     isSuccessMessage.value = true;
-    
+
     // Wait for 3 seconds before redirecting
     setTimeout(() => {
-      router.push('/login');
+      router.push("/login");
     }, 1500);
-    
   } catch (error) {
     if (error.response) {
       // Extracting the message from the response
-      message.value = error.response.data.message || 'Registration failed. Please try again.';
+      message.value =
+        error.response.data.message || "Registration failed. Please try again.";
     } else {
-      message.value = 'An error occurred while sending the request.';
+      message.value = "An error occurred while sending the request.";
     }
     isSuccessMessage.value = false;
   }
 };
 
-
 // Compute the class for message based on success or failure
 const messageClass = computed(() => {
   return {
-    'text-success': isSuccessMessage.value,
-    'text-error': !isSuccessMessage.value,
+    "text-success": isSuccessMessage.value,
+    "text-error": !isSuccessMessage.value,
   };
 });
-
 </script>
 
 <style scoped>
