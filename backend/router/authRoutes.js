@@ -12,14 +12,32 @@ const router = express.Router();
 
 router.get('/profile', authenticateToken, async (req, res) => {
     try {
-        const user = await getUserById(req.user.userId);
-        if (!user) return res.status(404).send('User not found');
+        // Extract the user ID from the query parameter
+        const userId = req.query.uid;
+
+        // Check if the user ID is provided
+        if (!userId) {
+            return res.status(400).send('User ID is required');
+        }
+
+        // Fetch the user information based on the provided user ID
+        const user = await getUserById(userId);
+        if (!user) {
+            return res.status(404).send('User not found');
+        }
+
+        // Remove sensitive information from the user object
+        delete user.password_hash;
+        delete user.password_reset_token;
+        delete user.password_reset_expires;
+
         res.json(user);
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error retrieving profile');
     }
 });
+
 
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
