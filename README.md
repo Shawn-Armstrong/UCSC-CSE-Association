@@ -6,7 +6,7 @@
 
 ### Example
 
-     ![1-10-2024-demo](https://github.com/Shawn-Armstrong/UCSC-CSE-Association/assets/80125540/56711161-432c-429d-a1ef-223cddcea26c)
+![1-10-2024-demo](https://gist.github.com/assets/80125540/18b43b24-09ff-495c-b739-c496040c7407)
 
 ## Getting Started
 
