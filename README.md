@@ -6,6 +6,8 @@
 
 ### Example
 
+     ![1-10-2024-demo](https://github.com/Shawn-Armstrong/UCSC-CSE-Association/assets/80125540/56711161-432c-429d-a1ef-223cddcea26c)
+
 ## Getting Started
 
 ### Requirements
