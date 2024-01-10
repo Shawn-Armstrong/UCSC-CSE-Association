@@ -6,9 +6,8 @@
 
 ### Example
 
-<p>
-  <img src="https://gist.github.com/assets/80125540/18b43b24-09ff-495c-b739-c496040c7407" alt="1-10-2024-demo">
-</p>
+<kbd>![demoJan10](https://github.com/Shawn-Armstrong/UCSC-CSE-Association/assets/80125540/ad2f3abd-ebee-4ade-aac9-afa6ce47b02c)</kbd>
+
 
 
 ## Getting Started
