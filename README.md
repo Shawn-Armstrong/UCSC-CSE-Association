@@ -6,7 +6,10 @@
 
 ### Example
 
-![1-10-2024-demo](https://gist.github.com/assets/80125540/18b43b24-09ff-495c-b739-c496040c7407)
+<p>
+  <img src="https://gist.github.com/assets/80125540/18b43b24-09ff-495c-b739-c496040c7407" alt="1-10-2024-demo">
+</p>
+
 
 ## Getting Started
 
